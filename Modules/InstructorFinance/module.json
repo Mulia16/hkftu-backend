@@ -1,0 +1,11 @@
+{
+    "name": "InstructorFinance",
+    "alias": "instructorfinance",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\InstructorFinance\\Providers\\InstructorFinanceServiceProvider"
+    ],
+    "files": []
+}

@@ -1,0 +1,13 @@
+{
+    "Auth": true,
+    "CourseCatalogue": true,
+    "ClassScheduling": true,
+    "Enrolment": true,
+    "Payment": true,
+    "Membership": true,
+    "Attendance": true,
+    "Certificate": true,
+    "InstructorFinance": true,
+    "Reporting": true,
+    "Notification": true
+}

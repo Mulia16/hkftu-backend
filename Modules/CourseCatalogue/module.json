@@ -1,0 +1,11 @@
+{
+    "name": "CourseCatalogue",
+    "alias": "coursecatalogue",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\CourseCatalogue\\Providers\\CourseCatalogueServiceProvider"
+    ],
+    "files": []
+}

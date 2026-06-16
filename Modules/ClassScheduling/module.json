@@ -1,0 +1,11 @@
+{
+    "name": "ClassScheduling",
+    "alias": "classscheduling",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\ClassScheduling\\Providers\\ClassSchedulingServiceProvider"
+    ],
+    "files": []
+}
