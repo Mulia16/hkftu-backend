@@ -1,0 +1,95 @@
+<?php
+
+namespace Modules\CourseCatalogue\Http\Controllers;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Modules\CourseCatalogue\Models\Subject;
+
+class SubjectController extends Controller
+{
+    public function index(Request $request): JsonResponse
+    {
+        $query = Subject::with('categories')
+            ->when($request->search, fn ($q) => $q->where('name', 'ilike', '%' . $request->search . '%')
+                ->orWhere('subject_code', 'ilike', '%' . $request->search . '%'))
+            ->when($request->status, fn ($q) => $q->where('status', $request->status));
+
+        $subjects = $query->orderBy('subject_code')->paginate(25);
+
+        return response()->json(['data' => $subjects]);
+    }
+
+    public function show(Subject $subject): JsonResponse
+    {
+        $subject->load('categories');
+
+        return response()->json(['data' => $subject]);
+    }
+
+    public function store(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'subject_code' => 'required|string|max:20|unique:course_catalogue.subjects,subject_code',
+            'name' => 'required|string|max:255',
+            'tuition_fee' => 'required|numeric|min:0',
+            'material_fee' => 'nullable|numeric|min:0',
+            'instructor_fee_default' => 'nullable|numeric|min:0',
+            'total_hours' => 'required|numeric|min:0.5',
+            'lesson_hours' => 'required|numeric|min:0.5',
+            'status' => 'nullable|in:draft,active,inactive',
+            'category_ids' => 'nullable|array',
+            'category_ids.*' => 'exists:course_catalogue.categories,id',
+        ]);
+
+        $categoryIds = $validated['category_ids'] ?? [];
+        unset($validated['category_ids']);
+
+        $subject = Subject::create($validated);
+
+        if ($categoryIds) {
+            $subject->categories()->sync($categoryIds);
+        }
+
+        $subject->load('categories');
+
+        return response()->json(['data' => $subject], 201);
+    }
+
+    public function update(Request $request, Subject $subject): JsonResponse
+    {
+        $validated = $request->validate([
+            'subject_code' => 'sometimes|string|max:20|unique:course_catalogue.subjects,subject_code,' . $subject->id,
+            'name' => 'sometimes|string|max:255',
+            'tuition_fee' => 'sometimes|numeric|min:0',
+            'material_fee' => 'nullable|numeric|min:0',
+            'instructor_fee_default' => 'nullable|numeric|min:0',
+            'total_hours' => 'sometimes|numeric|min:0.5',
+            'lesson_hours' => 'sometimes|numeric|min:0.5',
+            'status' => 'nullable|in:draft,active,inactive',
+            'category_ids' => 'nullable|array',
+            'category_ids.*' => 'exists:course_catalogue.categories,id',
+        ]);
+
+        $categoryIds = $validated['category_ids'] ?? null;
+        unset($validated['category_ids']);
+
+        $subject->update($validated);
+
+        if ($categoryIds !== null) {
+            $subject->categories()->sync($categoryIds);
+        }
+
+        $subject->load('categories');
+
+        return response()->json(['data' => $subject]);
+    }
+
+    public function destroy(Subject $subject): JsonResponse
+    {
+        $subject->delete();
+
+        return response()->json(['data' => ['message' => 'Subject deleted.']]);
+    }
+}

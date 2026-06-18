@@ -12,9 +12,8 @@ use Modules\Auth\Models\User;
  */
 class UserFactory extends Factory
 {
-    /**
-     * The current password being used by the factory.
-     */
+    protected $model = User::class;
+
     protected static ?string $password;
 
     /**
@@ -25,6 +24,7 @@ class UserFactory extends Factory
     public function definition(): array
     {
         return [
+            'public_id' => (string) Str::ulid(),
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
