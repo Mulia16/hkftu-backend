@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Modules\ClassScheduling\Http\Controllers\CentreController;
+use Modules\ClassScheduling\Http\Controllers\ClassController;
 use Modules\ClassScheduling\Http\Controllers\ClassroomController;
 
 Route::prefix('v1')->group(function () {
@@ -18,5 +19,15 @@ Route::prefix('v1')->group(function () {
         Route::post('centres/{centre}/classrooms', [ClassroomController::class, 'store']);
         Route::patch('centres/{centre}/classrooms/{classroom}', [ClassroomController::class, 'update']);
         Route::delete('centres/{centre}/classrooms/{classroom}', [ClassroomController::class, 'destroy']);
+
+        Route::get('classes', [ClassController::class, 'index']);
+        Route::post('classes', [ClassController::class, 'store']);
+        Route::get('classes/{id}', [ClassController::class, 'show']);
+        Route::patch('classes/{id}', [ClassController::class, 'update']);
+        Route::delete('classes/{id}', [ClassController::class, 'destroy']);
+        Route::post('classes/{id}/publish', [ClassController::class, 'publish']);
+        Route::get('classes/{id}/sessions', [ClassController::class, 'sessions']);
+        Route::post('classes/{id}/clash-check', [ClassController::class, 'clashCheck']);
+        Route::get('classes/{id}/availability', [ClassController::class, 'availability']);
     });
 });

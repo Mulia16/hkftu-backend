@@ -5,6 +5,7 @@ namespace Modules\CourseCatalogue\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Modules\CourseCatalogue\Models\Subject;
 
 class SubjectController extends Controller
@@ -31,7 +32,6 @@ class SubjectController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'subject_code' => 'required|string|max:20|unique:course_catalogue.subjects,subject_code',
             'name' => 'required|string|max:255',
             'tuition_fee' => 'required|numeric|min:0',
             'material_fee' => 'nullable|numeric|min:0',
@@ -46,11 +46,23 @@ class SubjectController extends Controller
         $categoryIds = $validated['category_ids'] ?? [];
         unset($validated['category_ids']);
 
-        $subject = Subject::create($validated);
+        $subject = DB::transaction(function () use ($validated, $categoryIds) {
+            DB::statement('SELECT pg_advisory_xact_lock(1001)');
 
-        if ($categoryIds) {
-            $subject->categories()->sync($categoryIds);
-        }
+            $maxNum = Subject::withTrashed()
+                ->whereRaw("subject_code ~ '^S[0-9]+$'")
+                ->selectRaw("COALESCE(MAX(CAST(SUBSTR(subject_code, 2) AS INTEGER)), 0) as max_num")
+                ->value('max_num');
+
+            $validated['subject_code'] = sprintf('S%03d', $maxNum + 1);
+            $subject = Subject::create($validated);
+
+            if ($categoryIds) {
+                $subject->categories()->sync($categoryIds);
+            }
+
+            return $subject;
+        });
 
         $subject->load('categories');
 
