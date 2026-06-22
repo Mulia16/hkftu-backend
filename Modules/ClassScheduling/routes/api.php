@@ -28,6 +28,7 @@ Route::prefix('v1')->group(function () {
         Route::post('classes/{id}/publish', [ClassController::class, 'publish']);
         Route::get('classes/{id}/sessions', [ClassController::class, 'sessions']);
         Route::post('classes/{id}/clash-check', [ClassController::class, 'clashCheck']);
+        Route::post('classes/{classId}/clashes/{clashId}/resolve', [ClassController::class, 'resolveClash']);
         Route::get('classes/{id}/availability', [ClassController::class, 'availability']);
     });
 });

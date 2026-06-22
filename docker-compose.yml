@@ -1,0 +1,109 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hkftu-api
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+      - "443:443"
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_KEY: ${APP_KEY}
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: hkftu
+      DB_USERNAME: hkftu
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CACHE_STORE: redis
+      SESSION_DRIVER: redis
+      QUEUE_CONNECTION: redis
+      SANCTUM_STATEFUL_DOMAINS: ${SANCTUM_STATEFUL_DOMAINS:-localhost}
+      FRANKENPHP_CONFIG: "worker ./public/index.php auto"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - app-storage:/app/storage
+    networks:
+      - hkftu
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: hkftu-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hkftu
+      POSTGRES_USER: hkftu
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hkftu"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hkftu
+
+  redis:
+    image: redis:7-alpine
+    container_name: hkftu-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hkftu
+
+  queue:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hkftu-queue
+    restart: unless-stopped
+    command: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: hkftu
+      DB_USERNAME: hkftu
+      DB_PASSWORD: ${DB_PASSWORD:-secret}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CACHE_STORE: redis
+      QUEUE_CONNECTION: redis
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - hkftu
+
+volumes:
+  pgdata:
+  redis-data:
+  app-storage:
+
+networks:
+  hkftu:
+    driver: bridge

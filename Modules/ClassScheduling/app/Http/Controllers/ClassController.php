@@ -6,6 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Support\ApiError;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Modules\Auth\Services\AuditLogger;
+use Modules\ClassScheduling\Models\ClashCheckResult;
+use Modules\ClassScheduling\Models\Classroom;
 use Modules\ClassScheduling\Models\CourseClass;
 use Modules\ClassScheduling\Models\SchedulePattern;
 use Modules\ClassScheduling\Services\ClashCheckService;
@@ -17,6 +20,7 @@ class ClassController extends Controller
     public function __construct(
         private ClashCheckService $clashCheck,
         private SessionGeneratorService $sessionGenerator,
+        private AuditLogger $auditLogger,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -34,15 +38,15 @@ class ClassController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'season_id'    => 'required|exists:course_catalogue.seasons,id',
-            'subject_id'   => 'required|exists:course_catalogue.subjects,id',
-            'class_code'   => 'required|string|max:30|unique:class_scheduling.classes,class_code',
-            'centre_id'    => 'required|exists:class_scheduling.centres,id',
+            'season_id' => 'required|exists:course_catalogue.seasons,id',
+            'subject_id' => 'required|exists:course_catalogue.subjects,id',
+            'class_code' => 'required|string|max:30|unique:class_scheduling.classes,class_code',
+            'centre_id' => 'required|exists:class_scheduling.centres,id',
             'classroom_id' => 'nullable|exists:class_scheduling.classrooms,id',
-            'capacity'     => 'required|integer|min:1',
+            'capacity' => 'required|integer|min:1',
             'min_students' => 'sometimes|integer|min:1',
-            'start_date'   => 'required|date',
-            'end_date'     => 'required|date|after_or_equal:start_date',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
             'instructor_id' => 'nullable|exists:auth.users,id',
             'schedule_pattern' => 'nullable|array',
             'schedule_pattern.type' => 'required_with:schedule_pattern|in:weekly,one_off',
@@ -52,6 +56,15 @@ class ClassController extends Controller
             'schedule_pattern.end_time' => 'required_with:schedule_pattern|date_format:H:i|after:schedule_pattern.start_time',
             'schedule_pattern.overrides' => 'nullable|array',
         ]);
+
+        if (isset($data['classroom_id'])) {
+            $classroom = Classroom::find($data['classroom_id']);
+            if ($classroom && $classroom->centre_id != $data['centre_id']) {
+                return ApiError::respond('VALIDATION_ERROR', 'Classroom does not belong to the selected centre.', 422, [
+                    'fieldErrors' => ['classroom_id' => ['Classroom does not belong to the selected centre.']],
+                ]);
+            }
+        }
 
         $course = Course::firstOrCreate(
             ['season_id' => $data['season_id'], 'subject_id' => $data['subject_id']],
@@ -75,12 +88,14 @@ class ClassController extends Controller
             $this->clashCheck->run($class);
         }
 
+        $this->auditLogger->record('class.create', 'class', $class->id, after: $class->toArray());
+
         return response()->json(['data' => $class->load(['course.subject', 'centre', 'classroom', 'sessions'])], 201);
     }
 
     public function show(int $id): JsonResponse
     {
-        $class = CourseClass::with(['course.subject', 'course.season', 'centre', 'classroom', 'sessions', 'clashResults'])->findOrFail($id);
+        $class = CourseClass::with(['course.subject', 'course.season', 'centre', 'classroom', 'schedulePattern', 'sessions', 'clashResults'])->findOrFail($id);
 
         return response()->json(['data' => $class]);
     }
@@ -90,25 +105,44 @@ class ClassController extends Controller
         $class = CourseClass::findOrFail($id);
 
         $data = $request->validate([
-            'class_code'   => "sometimes|string|max:30|unique:class_scheduling.classes,class_code,{$id}",
-            'centre_id'    => 'sometimes|exists:class_scheduling.centres,id',
+            'class_code' => "sometimes|string|max:30|unique:class_scheduling.classes,class_code,{$id}",
+            'centre_id' => 'sometimes|exists:class_scheduling.centres,id',
             'classroom_id' => 'nullable|exists:class_scheduling.classrooms,id',
-            'capacity'     => 'sometimes|integer|min:1',
+            'capacity' => 'sometimes|integer|min:1',
             'min_students' => 'sometimes|integer|min:1',
-            'start_date'   => 'sometimes|date',
-            'end_date'     => 'sometimes|date|after_or_equal:start_date',
+            'start_date' => 'sometimes|date',
+            'end_date' => 'sometimes|date|after_or_equal:start_date',
             'instructor_id' => 'nullable|exists:auth.users,id',
         ]);
 
+        $centreId = $data['centre_id'] ?? $class->centre_id;
+        $classroomId = $data['classroom_id'] ?? $class->classroom_id;
+
+        if ($classroomId) {
+            $classroom = Classroom::find($classroomId);
+            if ($classroom && $classroom->centre_id != $centreId) {
+                return ApiError::respond('VALIDATION_ERROR', 'Classroom does not belong to the selected centre.', 422, [
+                    'fieldErrors' => ['classroom_id' => ['Classroom does not belong to the selected centre.']],
+                ]);
+            }
+        }
+
+        $before = $class->toArray();
+
         $class->update($data);
         $this->clashCheck->run($class);
+
+        $this->auditLogger->record('class.update', 'class', $class->id, before: $before, after: $class->toArray());
 
         return response()->json(['data' => $class->load(['course.subject', 'centre', 'classroom'])]);
     }
 
     public function destroy(int $id): JsonResponse
     {
-        CourseClass::findOrFail($id)->delete();
+        $class = CourseClass::findOrFail($id);
+        $class->delete();
+
+        $this->auditLogger->record('class.delete', 'class', $id);
 
         return response()->json(null, 204);
     }
@@ -126,6 +160,8 @@ class ClassController extends Controller
         }
 
         $class->update(['status' => 'published']);
+
+        $this->auditLogger->record('class.publish', 'class', $class->id);
 
         return response()->json(['data' => $class]);
     }
@@ -156,8 +192,22 @@ class ClassController extends Controller
             'data' => [
                 'class_id' => $class->id,
                 'capacity' => $class->capacity,
-                'status'   => $class->status,
+                'status' => $class->status,
             ],
         ]);
+    }
+
+    public function resolveClash(Request $request, int $classId, int $clashId): JsonResponse
+    {
+        $request->validate(['resolution_note' => 'nullable|string|max:500']);
+
+        $clash = ClashCheckResult::where('class_id', $classId)->findOrFail($clashId);
+
+        $clash->update([
+            'resolved_by' => $request->user()->id,
+            'resolved_at' => now(),
+        ]);
+
+        return response()->json(['data' => $clash]);
     }
 }

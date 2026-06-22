@@ -3,6 +3,7 @@
 namespace Modules\ClassScheduling\Services;
 
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Modules\ClassScheduling\Models\ClassSession;
 use Modules\ClassScheduling\Models\CourseClass;
 use Modules\ClassScheduling\Models\SchedulePattern;
@@ -19,21 +20,23 @@ class SessionGeneratorService
             return 0;
         }
 
+        $holidays = $this->getHolidayDates();
+
         $sessions = $pattern->type === 'weekly'
-            ? $this->generateWeekly($class, $pattern)
+            ? $this->generateWeekly($class, $pattern, $holidays)
             : $this->generateOneOff($class, $pattern);
 
         $count = 0;
         foreach ($sessions as $index => $session) {
             ClassSession::create([
-                'class_id'     => $class->id,
-                'session_no'   => $index + 1,
-                'date'         => $session['date'],
-                'start_time'   => $pattern->start_time,
-                'end_time'     => $pattern->end_time,
+                'class_id' => $class->id,
+                'session_no' => $index + 1,
+                'date' => $session['date'],
+                'start_time' => $pattern->start_time,
+                'end_time' => $pattern->end_time,
                 'classroom_id' => $class->classroom_id,
                 'instructor_id' => $class->instructor_id,
-                'status'       => 'scheduled',
+                'status' => 'scheduled',
             ]);
             $count++;
         }
@@ -41,7 +44,15 @@ class SessionGeneratorService
         return $count;
     }
 
-    private function generateWeekly(CourseClass $class, SchedulePattern $pattern): array
+    private function getHolidayDates(): array
+    {
+        return DB::table('class_scheduling.holidays')
+            ->pluck('date')
+            ->map(fn ($d) => (string) $d)
+            ->toArray();
+    }
+
+    private function generateWeekly(CourseClass $class, SchedulePattern $pattern, array $holidays): array
     {
         $days = $pattern->days_of_week ?? [];
         $overrideDates = collect($pattern->overrides ?? [])->pluck('date')->toArray();
@@ -52,9 +63,13 @@ class SessionGeneratorService
 
         while ($current->lte($end)) {
             $dayOfWeek = $current->dayOfWeek;
+            $dateStr = $current->toDateString();
 
-            if (in_array($dayOfWeek, $days) && ! in_array($current->toDateString(), $overrideDates)) {
-                $sessions[] = ['date' => $current->toDateString()];
+            if (in_array($dayOfWeek, $days)
+                && ! in_array($dateStr, $overrideDates)
+                && ! in_array($dateStr, $holidays)
+            ) {
+                $sessions[] = ['date' => $dateStr];
             }
 
             $current->addDay();

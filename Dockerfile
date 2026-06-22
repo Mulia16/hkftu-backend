@@ -1,0 +1,29 @@
+FROM dunglas/frankenphp:php8.3-bookworm
+
+RUN install-php-extensions \
+    pdo_pgsql \
+    redis \
+    opcache \
+    pcntl \
+    bcmath \
+    gd \
+    zip \
+    intl
+
+WORKDIR /app
+
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
+
+COPY . .
+RUN composer dump-autoload --optimize \
+    && php artisan package:discover --ansi \
+    && mkdir -p storage/framework/{cache,sessions,testing,views} \
+    && mkdir -p storage/logs \
+    && chmod -R 775 storage bootstrap/cache
+
+COPY frankenphp/Caddyfile /etc/caddy/Caddyfile
+
+EXPOSE 80 443
+
+CMD ["frankenphp", "run", "--config", "/etc/caddy/Caddyfile"]

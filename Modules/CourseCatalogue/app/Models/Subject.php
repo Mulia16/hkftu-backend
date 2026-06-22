@@ -20,6 +20,8 @@ class Subject extends Model
         'instructor_fee_default',
         'total_hours',
         'lesson_hours',
+        'prerequisites',
+        'certificate_eligible',
         'status',
     ];
 
@@ -31,6 +33,8 @@ class Subject extends Model
             'instructor_fee_default' => 'decimal:2',
             'total_hours' => 'decimal:2',
             'lesson_hours' => 'decimal:2',
+            'prerequisites' => 'array',
+            'certificate_eligible' => 'boolean',
         ];
     }
 

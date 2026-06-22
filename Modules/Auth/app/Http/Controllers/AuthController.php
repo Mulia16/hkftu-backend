@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Support\ApiError;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Modules\Auth\DTOs\AuthenticatedUserData;
 use Modules\Auth\DTOs\LoginRequestData;
 use Modules\Auth\Models\User;
@@ -17,8 +18,7 @@ class AuthController extends Controller
     public function __construct(
         private SecurityEventLogger $securityEvents,
         private AuditLogger $auditLogger,
-    ) {
-    }
+    ) {}
 
     public function login(LoginRequestData $data)
     {
@@ -65,5 +65,88 @@ class AuthController extends Controller
         return response()->json([
             'data' => AuthenticatedUserData::fromUser($request->user()),
         ]);
+    }
+
+    public function updateProfile(Request $request)
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'phone' => 'nullable|string|max:30',
+        ]);
+
+        $before = $user->only(array_keys($validated));
+
+        $user->update($validated);
+
+        $this->auditLogger->record(
+            action: 'user.profile_update',
+            resourceType: 'user',
+            resourceId: $user->id,
+            before: $before,
+            after: $validated,
+        );
+
+        return response()->json([
+            'data' => AuthenticatedUserData::fromUser($user),
+        ]);
+    }
+
+    public function forgotPassword(Request $request)
+    {
+        $request->validate(['email' => 'required|email']);
+
+        $user = User::where('email', $request->email)->first();
+
+        if (! $user) {
+            return response()->json(['data' => ['message' => 'If the email exists, a reset link has been sent.']]);
+        }
+
+        $token = Str::random(64);
+
+        \DB::table('auth.password_reset_tokens')->updateOrInsert(
+            ['email' => $user->email],
+            ['token' => Hash::make($token), 'created_at' => now()],
+        );
+
+        $this->securityEvents->record('password_reset_requested', 'info', $user->id);
+
+        return response()->json(['data' => [
+            'message' => 'If the email exists, a reset link has been sent.',
+            'token' => $token,
+        ]]);
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'token' => 'required|string',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $record = \DB::table('auth.password_reset_tokens')
+            ->where('email', $request->email)
+            ->first();
+
+        if (! $record || ! Hash::check($request->token, $record->token)) {
+            return ApiError::respond('INVALID_TOKEN', 'Invalid or expired reset token.', 422);
+        }
+
+        if (now()->diffInMinutes($record->created_at) > 60) {
+            \DB::table('auth.password_reset_tokens')->where('email', $request->email)->delete();
+
+            return ApiError::respond('TOKEN_EXPIRED', 'Reset token has expired.', 422);
+        }
+
+        $user = User::where('email', $request->email)->firstOrFail();
+        $user->update(['password' => Hash::make($request->password)]);
+
+        \DB::table('auth.password_reset_tokens')->where('email', $request->email)->delete();
+
+        $this->securityEvents->record('password_reset_completed', 'info', $user->id);
+
+        return response()->json(['data' => ['message' => 'Password has been reset.']]);
     }
 }

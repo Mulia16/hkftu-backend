@@ -27,6 +27,7 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('courses', CourseController::class);
 
         Route::get('course-texts/{subjectId}', [CourseTextController::class, 'index']);
+        Route::get('course-texts/{subjectId}/{versionId}', [CourseTextController::class, 'show']);
         Route::post('course-texts/{subjectId}', [CourseTextController::class, 'store']);
         Route::patch('course-texts/{subjectId}/{versionId}', [CourseTextController::class, 'update']);
     });
