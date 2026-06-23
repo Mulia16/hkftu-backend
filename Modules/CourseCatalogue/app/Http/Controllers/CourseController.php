@@ -20,15 +20,55 @@ class CourseController extends Controller
         return response()->json($query->paginate($request->integer('per_page', 25)));
     }
 
+    public function search(Request $request): JsonResponse
+    {
+        $query = Course::with(['season', 'subject.categories', 'classes.centre', 'classes.classroom'])
+            ->where('status', 'published')
+            ->when($request->season_id, fn ($q) => $q->where('season_id', $request->season_id))
+            ->when($request->category_id, fn ($q) => $q->whereHas('subject.categories', fn ($q) => $q->where('id', $request->category_id)))
+            ->when($request->keyword, fn ($q) => $q->where(function ($q) use ($request) {
+                $q->where('course_code', 'ilike', "%{$request->keyword}%")
+                    ->orWhereHas('subject', fn ($q) => $q->where('name', 'ilike', "%{$request->keyword}%"));
+            }))
+            ->when($request->centre_id, fn ($q) => $q->whereHas('classes', fn ($q) => $q->where('centre_id', $request->centre_id)->where('status', 'published')))
+            ->orderBy('course_code');
+
+        $courses = $query->paginate($request->integer('per_page', 12));
+
+        return response()->json(['data' => $courses]);
+    }
+
+    public function detail(string $courseCode): JsonResponse
+    {
+        $course = Course::with([
+            'season',
+            'subject.categories',
+            'subject' => fn ($q) => $q->withTrashed(),
+            'classes.centre',
+            'classes.classroom',
+            'classes.schedulePattern',
+            'classes.sessions',
+        ])
+            ->where('course_code', $courseCode)
+            ->firstOrFail();
+
+        $course->classes->each(function ($class) {
+            $confirmed = $class->sessions->count();
+            $class->setAttribute('available_seats', max(0, $class->capacity - $confirmed));
+        });
+
+        return response()->json(['data' => $course]);
+    }
+
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'season_id'   => 'required|exists:course_catalogue.seasons,id',
-            'subject_id'  => 'required|exists:course_catalogue.subjects,id',
+            'season_id' => 'required|exists:course_catalogue.seasons,id',
+            'subject_id' => 'required|exists:course_catalogue.subjects,id',
             'course_code' => 'required|string|max:30|unique:course_catalogue.courses,course_code',
-            'page_no'     => 'nullable|integer|min:1',
-            'status'      => 'sometimes|in:draft,review,approved,published,archived',
-            'publish_at'  => 'nullable|date',
+            'page_no' => 'nullable|integer|min:1',
+            'status' => 'sometimes|in:draft,review,approved,published,archived',
+            'publish_at' => 'nullable|date',
         ]);
 
         $course = Course::create($data);
@@ -49,9 +89,9 @@ class CourseController extends Controller
 
         $data = $request->validate([
             'course_code' => "sometimes|string|max:30|unique:course_catalogue.courses,course_code,{$id}",
-            'page_no'     => 'nullable|integer|min:1',
-            'status'      => 'sometimes|in:draft,review,approved,published,archived',
-            'publish_at'  => 'nullable|date',
+            'page_no' => 'nullable|integer|min:1',
+            'status' => 'sometimes|in:draft,review,approved,published,archived',
+            'publish_at' => 'nullable|date',
         ]);
 
         $course->update($data);

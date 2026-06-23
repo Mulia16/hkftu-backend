@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
             AuthDatabaseSeeder::class,
             CourseCatalogueDatabaseSeeder::class,
             ClassSchedulingDatabaseSeeder::class,
+            NoticeSeeder::class,
         ]);
     }
 }
