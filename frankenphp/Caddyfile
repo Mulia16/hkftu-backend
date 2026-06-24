@@ -1,8 +1,6 @@
 {
-	apps/frankenphp {
-		order php_server before file_server
-
-		{$FRANKENPHP_CONFIG:worker ./public/index.php}
+	frankenphp {
+		worker ./public/index.php
 	}
 }
 
@@ -10,21 +8,6 @@
 
 root * /app/public
 
-encode zstd gzip
-
 php_server {
 	try_files {path} index.php
-}
-
-@static {
-	path /assets/*
-	file_server @static {
-		root /app/public
-	}
-}
-
-log {
-	output stdout
-	format json
-	level {$LOG_LEVEL:INFO}
 }
