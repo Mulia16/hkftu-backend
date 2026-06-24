@@ -15,6 +15,7 @@ class AuthDatabaseSeeder extends Seeder
             RoleSeeder::class,
             PermissionSeeder::class,
             UserSeeder::class,
+            LearnerSeeder::class,
         ]);
     }
 }
