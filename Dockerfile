@@ -1,4 +1,4 @@
-FROM dunglas/frankenphp:php8.3-bookworm
+FROM dunglas/frankenphp:php8.4-bookworm
 
 RUN install-php-extensions \
     pdo_pgsql \
@@ -8,7 +8,8 @@ RUN install-php-extensions \
     bcmath \
     gd \
     zip \
-    intl
+    intl \
+    exif
 
 WORKDIR /app
 
