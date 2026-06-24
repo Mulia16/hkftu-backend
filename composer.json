@@ -16,6 +16,7 @@
         "laravel/tinker": "^3.0",
         "maatwebsite/excel": "^3.1",
         "nwidart/laravel-modules": "^13.0",
+        "opcodesio/log-viewer": "^3.24",
         "predis/predis": "^3.5",
         "spatie/laravel-activitylog": "^5.0",
         "spatie/laravel-data": "^4.23",
@@ -33,7 +34,6 @@
         "laravel/telescope": "^5.20",
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.6",
-        "opcodesio/log-viewer": "^3.24",
         "pestphp/pest": "^4.7",
         "pestphp/pest-plugin-laravel": "^4.1"
     },
@@ -102,7 +102,13 @@
     },
     "extra": {
         "laravel": {
-            "dont-discover": []
+            "dont-discover": [
+                "laravel/telescope",
+                "laravel/pail",
+                "laravel/pao",
+                "dedoc/scramble",
+                "barryvdh/laravel-ide-helper"
+            ]
         }
     },
     "config": {

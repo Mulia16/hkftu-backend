@@ -15,11 +15,11 @@ WORKDIR /app
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 COPY composer.json composer.lock ./
-RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
+RUN composer install --no-dev --no-scripts --prefer-dist
 
 COPY . .
-RUN composer dump-autoload --optimize \
-    && php artisan package:discover --ansi \
+RUN rm -f bootstrap/cache/packages.php bootstrap/cache/services.php \
+    && composer dump-autoload --optimize --no-scripts \
     && mkdir -p storage/framework/{cache,sessions,testing,views} \
     && mkdir -p storage/logs \
     && chmod -R 775 storage bootstrap/cache
