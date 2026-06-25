@@ -11,6 +11,7 @@ class ClassSchedulingDatabaseSeeder extends Seeder
         $this->call([
             CentreSeeder::class,
             ClassroomSeeder::class,
+            HolidaySeeder::class,
         ]);
     }
 }

@@ -12,6 +12,7 @@ class CourseCatalogueDatabaseSeeder extends Seeder
             SeasonSeeder::class,
             CategorySeeder::class,
             SubjectSeeder::class,
+            CourseSeeder::class,
         ]);
     }
 }

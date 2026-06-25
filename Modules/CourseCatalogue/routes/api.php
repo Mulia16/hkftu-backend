@@ -1,21 +1,23 @@
 <?php
 
-use App\Http\Controllers\NoticeController;
 use Illuminate\Support\Facades\Route;
 use Modules\CourseCatalogue\Http\Controllers\CategoryController;
 use Modules\CourseCatalogue\Http\Controllers\CourseController;
 use Modules\CourseCatalogue\Http\Controllers\CourseTextController;
+use Modules\CourseCatalogue\Http\Controllers\NoticeController;
 use Modules\CourseCatalogue\Http\Controllers\SeasonController;
 use Modules\CourseCatalogue\Http\Controllers\SubjectController;
 
 Route::prefix('v1')->group(function () {
-    Route::get('seasons', [SeasonController::class, 'index']);
-    Route::get('seasons/{season}', [SeasonController::class, 'show']);
-    Route::get('categories', [CategoryController::class, 'index']);
-    Route::get('categories/{category}', [CategoryController::class, 'show']);
-    Route::get('courses/search', [CourseController::class, 'search']);
-    Route::get('courses/{courseCode}', [CourseController::class, 'detail']);
-    Route::get('notices', [NoticeController::class, 'index']);
+    Route::middleware(['throttle:public'])->group(function () {
+        Route::get('seasons', [SeasonController::class, 'index']);
+        Route::get('seasons/{season}', [SeasonController::class, 'show']);
+        Route::get('categories', [CategoryController::class, 'index']);
+        Route::get('categories/{category}', [CategoryController::class, 'show']);
+        Route::get('courses/search', [CourseController::class, 'search']);
+        Route::get('courses/{courseCode}', [CourseController::class, 'detail']);
+        Route::get('notices', [NoticeController::class, 'index']);
+    });
 
     Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('seasons', [SeasonController::class, 'store']);

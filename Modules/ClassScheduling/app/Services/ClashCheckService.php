@@ -2,9 +2,12 @@
 
 namespace Modules\ClassScheduling\Services;
 
-use Modules\ClassScheduling\Models\ClassSession;
+use Carbon\Carbon;
+use Modules\Auth\Models\InstructorProfile;
 use Modules\ClassScheduling\Models\ClashCheckResult;
+use Modules\ClassScheduling\Models\ClassSession;
 use Modules\ClassScheduling\Models\CourseClass;
+use Modules\ClassScheduling\Models\Holiday;
 
 class ClashCheckService
 {
@@ -20,13 +23,15 @@ class ClashCheckService
         $results = array_merge($results, $this->checkDurationMismatch($class));
         $results = array_merge($results, $this->checkPageNoMissing($class));
         $results = array_merge($results, $this->checkRegistrationAfterClassStart($class));
+        $results = array_merge($results, $this->checkHolidayConflict($class));
+        $results = array_merge($results, $this->checkInstructorMissingProfile($class));
 
         foreach ($results as $result) {
             ClashCheckResult::create([
-                'class_id'   => $class->id,
-                'severity'   => $result['severity'],
+                'class_id' => $class->id,
+                'severity' => $result['severity'],
                 'check_type' => $result['check_type'],
-                'message'    => $result['message'],
+                'message' => $result['message'],
             ]);
         }
 
@@ -52,9 +57,9 @@ class ClashCheckService
 
             if ($conflict) {
                 return [[
-                    'severity'   => 'error',
+                    'severity' => 'error',
                     'check_type' => 'classroom_double_booking',
-                    'message'    => "Classroom is already booked on {$session->date} {$session->start_time}–{$session->end_time}.",
+                    'message' => "Classroom is already booked on {$session->date} {$session->start_time}–{$session->end_time}.",
                 ]];
             }
         }
@@ -81,9 +86,9 @@ class ClashCheckService
 
             if ($conflict) {
                 return [[
-                    'severity'   => 'error',
+                    'severity' => 'error',
                     'check_type' => 'instructor_double_booking',
-                    'message'    => "Instructor is already assigned to another class on {$session->date} {$session->start_time}–{$session->end_time}.",
+                    'message' => "Instructor is already assigned to another class on {$session->date} {$session->start_time}–{$session->end_time}.",
                 ]];
             }
         }
@@ -101,9 +106,9 @@ class ClashCheckService
 
         if ($class->classroom && $class->capacity > $class->classroom->capacity) {
             return [[
-                'severity'   => 'warning',
+                'severity' => 'warning',
                 'check_type' => 'capacity_exceeds_room',
-                'message'    => "Class capacity ({$class->capacity}) exceeds classroom capacity ({$class->classroom->capacity}).",
+                'message' => "Class capacity ({$class->capacity}) exceeds classroom capacity ({$class->classroom->capacity}).",
             ]];
         }
 
@@ -116,9 +121,9 @@ class ClashCheckService
 
         if ($class->course && is_null($class->course->page_no)) {
             return [[
-                'severity'   => 'warning',
+                'severity' => 'warning',
                 'check_type' => 'page_no_missing',
-                'message'    => 'Course has no brochure page number assigned. Required before brochure export.',
+                'message' => 'Course has no brochure page number assigned. Required before brochure export.',
             ]];
         }
 
@@ -137,9 +142,9 @@ class ClashCheckService
 
         if ($season->public_registration_start > $class->start_date) {
             return [[
-                'severity'   => 'warning',
+                'severity' => 'warning',
                 'check_type' => 'registration_after_class_start',
-                'message'    => "Season public registration opens ({$season->public_registration_start}) after class start date ({$class->start_date}).",
+                'message' => "Season public registration opens ({$season->public_registration_start}) after class start date ({$class->start_date}).",
             ]];
         }
 
@@ -162,9 +167,53 @@ class ClashCheckService
 
         if ($sessionCount > 0 && abs(($sessionCount * $lessonHours) - $totalHours) > 0.01) {
             return [[
-                'severity'   => 'warning',
+                'severity' => 'warning',
                 'check_type' => 'duration_mismatch',
-                'message'    => "Generated sessions ({$sessionCount} × {$lessonHours}h = ".round($sessionCount * $lessonHours, 2)."h) do not match subject total hours ({$totalHours}h).",
+                'message' => "Generated sessions ({$sessionCount} × {$lessonHours}h = ".round($sessionCount * $lessonHours, 2)."h) do not match subject total hours ({$totalHours}h).",
+            ]];
+        }
+
+        return [];
+    }
+
+    private function checkHolidayConflict(CourseClass $class): array
+    {
+        $sessions = ClassSession::where('class_id', $class->id)->get();
+
+        if ($sessions->isEmpty()) {
+            return [];
+        }
+
+        $sessionDates = $sessions->pluck('date')->map(fn ($d) => $d instanceof Carbon ? $d->toDateString() : $d)->toArray();
+
+        $holidays = Holiday::whereIn('date', $sessionDates)->pluck('name', 'date');
+
+        if ($holidays->isEmpty()) {
+            return [];
+        }
+
+        $conflictLines = $holidays->map(fn ($name, $date) => "{$date} ({$name})")->join(', ');
+
+        return [[
+            'severity' => 'error',
+            'check_type' => 'holiday_conflict',
+            'message' => "Class sessions fall on public holiday(s): {$conflictLines}.",
+        ]];
+    }
+
+    private function checkInstructorMissingProfile(CourseClass $class): array
+    {
+        if (! $class->instructor_id) {
+            return [];
+        }
+
+        $hasProfile = InstructorProfile::where('user_id', $class->instructor_id)->exists();
+
+        if (! $hasProfile) {
+            return [[
+                'severity' => 'warning',
+                'check_type' => 'instructor_missing_profile',
+                'message' => 'Instructor has no InstructorProfile. Required for contract generation and fee settlement.',
             ]];
         }
 

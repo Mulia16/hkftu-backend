@@ -7,6 +7,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Modules\Auth\Services\AuditLogger;
+use Modules\CourseCatalogue\DTOs\StoreSubjectData;
 use Modules\CourseCatalogue\Models\Subject;
 
 class SubjectController extends Controller
@@ -32,23 +33,9 @@ class SubjectController extends Controller
         return response()->json(['data' => $subject]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreSubjectData $data): JsonResponse
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'tuition_fee' => 'required|numeric|min:0',
-            'material_fee' => 'nullable|numeric|min:0',
-            'instructor_fee_default' => 'nullable|numeric|min:0',
-            'total_hours' => 'required|numeric|min:0.5',
-            'lesson_hours' => 'required|numeric|min:0.5',
-            'prerequisites' => 'nullable|array',
-            'prerequisites.*' => 'string|max:100',
-            'certificate_eligible' => 'nullable|boolean',
-            'status' => 'nullable|in:draft,active,inactive',
-            'category_ids' => 'nullable|array',
-            'category_ids.*' => 'exists:course_catalogue.categories,id',
-        ]);
-
+        $validated = $data->toArray();
         $categoryIds = $validated['category_ids'] ?? [];
         unset($validated['category_ids']);
 

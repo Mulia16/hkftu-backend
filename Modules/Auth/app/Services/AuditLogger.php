@@ -7,9 +7,7 @@ use Modules\Auth\Models\AuditLog;
 
 class AuditLogger
 {
-    public function __construct(private Request $request)
-    {
-    }
+    public function __construct(private Request $request) {}
 
     public function record(
         string $action,

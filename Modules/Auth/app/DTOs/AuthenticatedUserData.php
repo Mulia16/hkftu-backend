@@ -16,8 +16,7 @@ class AuthenticatedUserData extends Data
         /** @var string[] */
         public array $permissions,
         public ?string $token = null,
-    ) {
-    }
+    ) {}
 
     public static function fromUser(User $user, ?string $token = null): self
     {

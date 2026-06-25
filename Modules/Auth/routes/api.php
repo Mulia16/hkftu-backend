@@ -7,9 +7,11 @@ use Modules\Auth\Http\Controllers\LearnerController;
 use Modules\Auth\Http\Controllers\MembershipController;
 
 Route::prefix('v1')->group(function () {
-    Route::post('auth/login', [AuthController::class, 'login']);
-    Route::post('auth/password/request', [AuthController::class, 'forgotPassword']);
-    Route::post('auth/password/reset', [AuthController::class, 'resetPassword']);
+    Route::middleware(['throttle:auth'])->group(function () {
+        Route::post('auth/login', [AuthController::class, 'login']);
+        Route::post('auth/password/request', [AuthController::class, 'forgotPassword']);
+        Route::post('auth/password/reset', [AuthController::class, 'resetPassword']);
+    });
 
     Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('auth/logout', [AuthController::class, 'logout']);

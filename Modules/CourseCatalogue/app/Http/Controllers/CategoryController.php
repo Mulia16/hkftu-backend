@@ -5,6 +5,7 @@ namespace Modules\CourseCatalogue\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Modules\CourseCatalogue\DTOs\StoreCategoryData;
 use Modules\CourseCatalogue\Models\Category;
 
 class CategoryController extends Controller
@@ -26,17 +27,9 @@ class CategoryController extends Controller
         return response()->json(['data' => $category]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreCategoryData $data): JsonResponse
     {
-        $validated = $request->validate([
-            'parent_id' => 'nullable|exists:course_catalogue.categories,id',
-            'code' => 'required|string|max:50|unique:course_catalogue.categories,code',
-            'name_en' => 'required|string|max:255',
-            'name_zh' => 'required|string|max:255',
-            'sort_order' => 'nullable|integer|min:0',
-        ]);
-
-        $category = Category::create($validated);
+        $category = Category::create($data->toArray());
 
         return response()->json(['data' => $category], 201);
     }
@@ -45,7 +38,7 @@ class CategoryController extends Controller
     {
         $validated = $request->validate([
             'parent_id' => 'nullable|exists:course_catalogue.categories,id',
-            'code' => 'sometimes|string|max:50|unique:course_catalogue.categories,code,' . $category->id,
+            'code' => 'sometimes|string|max:50|unique:course_catalogue.categories,code,'.$category->id,
             'name_en' => 'sometimes|string|max:255',
             'name_zh' => 'sometimes|string|max:255',
             'sort_order' => 'nullable|integer|min:0',

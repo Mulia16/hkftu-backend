@@ -4,6 +4,7 @@ namespace Modules\Auth\Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Modules\Auth\Models\InstructorProfile;
 use Modules\Auth\Models\StaffProfile;
 use Modules\Auth\Models\User;
 
@@ -95,6 +96,25 @@ class UserSeeder extends Seeder
                     'status' => 'active',
                 ],
             );
+
+            if ($data['role'] === 'instructor') {
+                InstructorProfile::firstOrCreate(
+                    ['user_id' => $user->id],
+                    [
+                        'instructor_no' => 'INST-001',
+                        'name' => $data['name'],
+                        'phone' => $data['phone'],
+                        'email' => $data['email'],
+                        'bank_name' => 'HSBC',
+                        'bank_account_no' => 'encrypted:xxxx',
+                        'bank_account_name' => $data['name'],
+                        'cheque_payable_to' => $data['name'],
+                        'qualifications' => ['TESOL', 'Certificate in Education'],
+                        'categories' => ['language', 'business'],
+                        'status' => 'active',
+                    ],
+                );
+            }
         }
     }
 }

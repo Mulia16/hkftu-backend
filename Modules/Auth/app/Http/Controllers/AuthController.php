@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Modules\Auth\DTOs\AuthenticatedUserData;
 use Modules\Auth\DTOs\LoginRequestData;
+use Modules\Auth\DTOs\UpdateUserProfileData;
 use Modules\Auth\Models\User;
 use Modules\Auth\Services\AuditLogger;
 use Modules\Auth\Services\SecurityEventLogger;
@@ -67,25 +68,19 @@ class AuthController extends Controller
         ]);
     }
 
-    public function updateProfile(Request $request)
+    public function updateProfile(UpdateUserProfileData $data)
     {
-        $user = $request->user();
+        $user = request()->user();
 
-        $validated = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'phone' => 'nullable|string|max:30',
-        ]);
-
-        $before = $user->only(array_keys($validated));
-
-        $user->update($validated);
+        $before = $user->only(array_keys($data->toArray()));
+        $user->update($data->toArray());
 
         $this->auditLogger->record(
             action: 'user.profile_update',
             resourceType: 'user',
             resourceId: $user->id,
             before: $before,
-            after: $validated,
+            after: $data->toArray(),
         );
 
         return response()->json([

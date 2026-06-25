@@ -6,8 +6,10 @@ use Modules\ClassScheduling\Http\Controllers\ClassController;
 use Modules\ClassScheduling\Http\Controllers\ClassroomController;
 
 Route::prefix('v1')->group(function () {
-    Route::get('centres', [CentreController::class, 'index']);
-    Route::get('centres/{centre}', [CentreController::class, 'show']);
+    Route::middleware(['throttle:public'])->group(function () {
+        Route::get('centres', [CentreController::class, 'index']);
+        Route::get('centres/{centre}', [CentreController::class, 'show']);
+    });
 
     Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('centres', [CentreController::class, 'store']);

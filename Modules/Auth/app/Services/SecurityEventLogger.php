@@ -7,9 +7,7 @@ use Modules\Auth\Models\SecurityEvent;
 
 class SecurityEventLogger
 {
-    public function __construct(private Request $request)
-    {
-    }
+    public function __construct(private Request $request) {}
 
     public function record(
         string $eventType,

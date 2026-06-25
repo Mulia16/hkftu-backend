@@ -6,6 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Support\ApiError;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Modules\Auth\DTOs\StoreDependentData;
+use Modules\Auth\DTOs\StoreLearnerData;
+use Modules\Auth\DTOs\UpdateMyProfileData;
 use Modules\Auth\Models\DependentProfile;
 use Modules\Auth\Models\LearnerProfile;
 use Modules\Auth\Services\AuditLogger;
@@ -48,7 +51,7 @@ class LearnerController extends Controller
         return response()->json(['data' => $profile]);
     }
 
-    public function updateMyProfile(Request $request): JsonResponse
+    public function updateMyProfile(UpdateMyProfileData $data, Request $request): JsonResponse
     {
         $profile = LearnerProfile::where('user_id', $request->user()->id)->first();
 
@@ -56,14 +59,7 @@ class LearnerController extends Controller
             return ApiError::respond('PROFILE_NOT_FOUND', 'Learner profile not found.', 404);
         }
 
-        $validated = $request->validate([
-            'phone' => 'nullable|string|max:30',
-            'email' => 'nullable|email|max:255',
-            'address' => 'nullable|string|max:500',
-            'emergency_contact_name' => 'nullable|string|max:255',
-            'emergency_contact_phone' => 'nullable|string|max:30',
-        ]);
-
+        $validated = $data->toArray();
         $before = $profile->only(array_keys($validated));
         $profile->update($validated);
 
@@ -72,23 +68,9 @@ class LearnerController extends Controller
         return response()->json(['data' => $profile->load('user')]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreLearnerData $data): JsonResponse
     {
-        $validated = $request->validate([
-            'user_id' => 'required|exists:auth.users,id',
-            'name_en' => 'required|string|max:255',
-            'name_zh' => 'nullable|string|max:255',
-            'id_type' => 'nullable|string|max:20',
-            'id_no' => 'nullable|string|max:50',
-            'dob' => 'nullable|date',
-            'gender' => 'nullable|in:male,female,other',
-            'phone' => 'nullable|string|max:30',
-            'email' => 'nullable|email|max:255',
-            'address' => 'nullable|string|max:500',
-            'emergency_contact_name' => 'nullable|string|max:255',
-            'emergency_contact_phone' => 'nullable|string|max:30',
-            'membership_no' => 'nullable|string|max:50',
-        ]);
+        $validated = $data->toArray();
 
         $existing = LearnerProfile::where('user_id', $validated['user_id'])->first();
         if ($existing) {
@@ -142,12 +124,9 @@ class LearnerController extends Controller
         return response()->json(['data' => $profile->load('user')]);
     }
 
-    public function storeDependent(Request $request): JsonResponse
+    public function storeDependent(StoreDependentData $data, Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'learner_profile_id' => 'required|exists:auth.learner_profiles,id',
-            'relationship' => 'nullable|in:parent,guardian,other',
-        ]);
+        $validated = $data->toArray();
 
         $dependent = DependentProfile::create([
             'guardian_user_id' => $request->user()->id,

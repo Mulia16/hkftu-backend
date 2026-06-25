@@ -5,6 +5,7 @@ namespace Modules\CourseCatalogue\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Modules\ClassScheduling\Models\CourseClass;
 
 class Course extends Model
 {
@@ -38,6 +39,6 @@ class Course extends Model
 
     public function classes(): HasMany
     {
-        return $this->hasMany(\Modules\ClassScheduling\Models\CourseClass::class, 'course_id');
+        return $this->hasMany(CourseClass::class, 'course_id');
     }
 }

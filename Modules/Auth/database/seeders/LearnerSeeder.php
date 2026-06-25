@@ -3,6 +3,7 @@
 namespace Modules\Auth\Database\Seeders;
 
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 use Modules\Auth\Models\LearnerProfile;
 use Modules\Auth\Models\User;
 
@@ -58,7 +59,7 @@ class LearnerSeeder extends Seeder
             ],
         ];
 
-        $defaultPassword = \Illuminate\Support\Facades\Hash::make('password');
+        $defaultPassword = Hash::make('password');
 
         foreach ($learners as $data) {
             $user = User::firstOrCreate(

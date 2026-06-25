@@ -1,14 +1,16 @@
 <?php
 
 use App\Support\ApiError;
-use Illuminate\Auth\AuthenticationException;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Modules\Auth\Http\Middleware\Idempotency;
+use Modules\Auth\Http\Middleware\RequireMfa;
 use Modules\Auth\Http\Middleware\SetPermissionsTeam;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -21,6 +23,10 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->appendToGroup('api', SetPermissionsTeam::class);
+        $middleware->alias([
+            'idempotency' => Idempotency::class,
+            'mfa' => RequireMfa::class,
+        ]);
 
         Authenticate::redirectUsing(fn () => null);
     })

@@ -1,8 +1,8 @@
 <?php
 
-use Spatie\Permission\DefaultTeamResolver;
 use Modules\Auth\Models\Permission;
 use Modules\Auth\Models\Role;
+use Spatie\Permission\DefaultTeamResolver;
 
 return [
 

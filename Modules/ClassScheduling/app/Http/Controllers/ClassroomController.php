@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Modules\ClassScheduling\DTOs\StoreClassroomData;
 use Modules\ClassScheduling\Models\Centre;
 use Modules\ClassScheduling\Models\Classroom;
 
@@ -23,20 +24,9 @@ class ClassroomController extends Controller
         return response()->json(['data' => $classroom]);
     }
 
-    public function store(Request $request, Centre $centre): JsonResponse
+    public function store(StoreClassroomData $data, Centre $centre): JsonResponse
     {
-        $validated = $request->validate([
-            'code' => [
-                'required', 'string', 'max:20',
-                Rule::unique('class_scheduling.classrooms')->where('centre_id', $centre->id),
-            ],
-            'name' => 'required|string|max:255',
-            'capacity' => 'required|integer|min:1',
-            'facilities_json' => 'nullable|array',
-            'status' => 'nullable|in:active,inactive',
-        ]);
-
-        $classroom = $centre->classrooms()->create($validated);
+        $classroom = $centre->classrooms()->create($data->toArray());
 
         return response()->json(['data' => $classroom], 201);
     }
