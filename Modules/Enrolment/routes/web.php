@@ -1,8 +1,4 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use Modules\Enrolment\Http\Controllers\EnrolmentController;
-
-Route::middleware(['auth', 'verified'])->group(function () {
-    Route::resource('enrolments', EnrolmentController::class)->names('enrolment');
-});
+// Enrolment API routes are in routes/api.php
+// No web routes needed for this API-only module.

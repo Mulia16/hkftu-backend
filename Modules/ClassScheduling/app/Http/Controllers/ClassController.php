@@ -7,6 +7,7 @@ use App\Support\ApiError;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Modules\Auth\Services\AuditLogger;
+use Modules\ClassScheduling\DTOs\StoreClassData;
 use Modules\ClassScheduling\Models\ClashCheckResult;
 use Modules\ClassScheduling\Models\Classroom;
 use Modules\ClassScheduling\Models\CourseClass;
@@ -35,27 +36,9 @@ class ClassController extends Controller
         return response()->json($query->paginate($request->integer('per_page', 25)));
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreClassData $data): JsonResponse
     {
-        $data = $request->validate([
-            'season_id' => 'required|exists:course_catalogue.seasons,id',
-            'subject_id' => 'required|exists:course_catalogue.subjects,id',
-            'class_code' => 'required|string|max:30|unique:class_scheduling.classes,class_code',
-            'centre_id' => 'required|exists:class_scheduling.centres,id',
-            'classroom_id' => 'nullable|exists:class_scheduling.classrooms,id',
-            'capacity' => 'required|integer|min:1',
-            'min_students' => 'sometimes|integer|min:1',
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after_or_equal:start_date',
-            'instructor_id' => 'nullable|exists:auth.users,id',
-            'schedule_pattern' => 'nullable|array',
-            'schedule_pattern.type' => 'required_with:schedule_pattern|in:weekly,one_off',
-            'schedule_pattern.days_of_week' => 'nullable|array',
-            'schedule_pattern.days_of_week.*' => 'integer|between:0,6',
-            'schedule_pattern.start_time' => 'required_with:schedule_pattern|date_format:H:i',
-            'schedule_pattern.end_time' => 'required_with:schedule_pattern|date_format:H:i|after:schedule_pattern.start_time',
-            'schedule_pattern.overrides' => 'nullable|array',
-        ]);
+        $data = $data->toArray();
 
         if (isset($data['classroom_id'])) {
             $classroom = Classroom::find($data['classroom_id']);

@@ -1,8 +1,4 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use Modules\Membership\Http\Controllers\MembershipController;
-
-Route::middleware(['auth', 'verified'])->group(function () {
-    Route::resource('memberships', MembershipController::class)->names('membership');
-});
+// Membership API routes are in routes/api.php
+// No web routes needed for this API-only module.

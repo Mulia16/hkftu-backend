@@ -4,7 +4,6 @@ use Illuminate\Support\Facades\Route;
 use Modules\Auth\Http\Controllers\AuditLogController;
 use Modules\Auth\Http\Controllers\AuthController;
 use Modules\Auth\Http\Controllers\LearnerController;
-use Modules\Auth\Http\Controllers\MembershipController;
 
 Route::prefix('v1')->group(function () {
     Route::middleware(['throttle:auth'])->group(function () {
@@ -29,8 +28,5 @@ Route::prefix('v1')->group(function () {
 
         Route::get('dependents', [LearnerController::class, 'myDependents']);
         Route::post('dependents', [LearnerController::class, 'storeDependent']);
-
-        Route::post('membership/verify', [MembershipController::class, 'verify']);
-        Route::get('membership/snapshots/{learnerProfileId}', [MembershipController::class, 'snapshots']);
     });
 });

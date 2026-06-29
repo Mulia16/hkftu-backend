@@ -14,7 +14,7 @@ services:
       APP_DEBUG: "false"
       APP_KEY: ${APP_KEY:-base64:7wopYp8IQ2sMZfTjVnun+xMChyYZ75ust62QEVphRHg=}
       APP_URL: ${APP_URL:-http://localhost}
-      APP_TIMEZONE: Asia/Hong_Kong
+      APP_TIMEZONE: Asia/Kuala_Lumpur
       SERVER_NAME: ${SERVER_NAME:-localhost}
       DB_CONNECTION: pgsql
       DB_HOST: postgres

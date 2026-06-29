@@ -59,4 +59,14 @@ class LearnerProfile extends Model
     {
         return $this->hasOne(MemberStatusSnapshot::class)->latestOfMany();
     }
+
+    public function verifications(): HasMany
+    {
+        return $this->hasMany(MemberVerification::class);
+    }
+
+    public function pricingEligibilities(): HasMany
+    {
+        return $this->hasMany(MemberPricingEligibility::class);
+    }
 }

@@ -3,54 +3,109 @@
 namespace Modules\Enrolment\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Support\ApiError;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Modules\Auth\Models\LearnerProfile;
+use Modules\Auth\Services\AuditLogger;
+use Modules\ClassScheduling\Models\CourseClass;
+use Modules\Enrolment\DTOs\StoreEnrolmentData;
+use Modules\Enrolment\Models\Enrolment;
+use Modules\Enrolment\Services\EligibilityService;
+use Modules\Enrolment\Services\SeatReservationService;
 
 class EnrolmentController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function __construct(
+        private SeatReservationService $reservationService,
+        private EligibilityService $eligibilityService,
+        private AuditLogger $auditLogger,
+    ) {}
+
+    public function index(Request $request): JsonResponse
     {
-        return view('enrolment::index');
+        $query = Enrolment::with(['courseClass.course.subject', 'learner', 'creator'])
+            ->when($request->centre_id, fn ($q) => $q->whereHas('courseClass', fn ($q) => $q->where('centre_id', $request->centre_id)))
+            ->when($request->season_id, fn ($q) => $q->whereHas('courseClass.course', fn ($q) => $q->where('season_id', $request->season_id)))
+            ->when($request->status, fn ($q) => $q->where('status', $request->status))
+            ->when($request->learner_id, fn ($q) => $q->where('learner_id', $request->learner_id))
+            ->orderByDesc('created_at');
+
+        return response()->json($query->paginate($request->integer('per_page', 25)));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function store(StoreEnrolmentData $data, Request $request): JsonResponse
     {
-        return view('enrolment::create');
+        $class = CourseClass::findOrFail($data->class_id);
+        $learner = LearnerProfile::findOrFail($data->learner_id);
+
+        $eligibility = $this->eligibilityService->check($class, $learner, $data->channel);
+
+        if (! $eligibility['allowed']) {
+            return ApiError::respond('ELIGIBILITY_FAILED', 'Eligibility check failed.', 422, [
+                'reasons' => $eligibility['reasons'],
+            ]);
+        }
+
+        if ($data->reservation_id) {
+            $this->reservationService->confirm($data->reservation_id);
+        }
+
+        $enrolment = Enrolment::create([
+            'class_id' => $class->id,
+            'learner_id' => $learner->id,
+            'reservation_id' => $data->reservation_id,
+            'status' => $data->channel === 'manual' ? 'confirmed' : 'pending',
+            'channel' => $data->channel,
+            'price_snapshot_json' => $eligibility['pricing'],
+            'member_snapshot_json' => [
+                'membership_status' => $learner->membership_status,
+                'membership_no' => $learner->membership_no,
+            ],
+            'created_by' => $request->user()?->id,
+        ]);
+
+        $this->auditLogger->record('enrolment.create', 'enrolment', $enrolment->id, after: $enrolment->toArray());
+
+        return response()->json(['data' => $enrolment->load(['courseClass.course.subject', 'learner'])], 201);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request) {}
-
-    /**
-     * Show the specified resource.
-     */
-    public function show($id)
+    public function show(int $id): JsonResponse
     {
-        return view('enrolment::show');
+        $enrolment = Enrolment::with(['courseClass.course.subject', 'learner', 'reservation', 'creator'])->findOrFail($id);
+
+        return response()->json(['data' => $enrolment]);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit($id)
+    public function confirm(Request $request, int $id): JsonResponse
     {
-        return view('enrolment::edit');
+        $enrolment = Enrolment::findOrFail($id);
+
+        if ($enrolment->status !== 'pending') {
+            return ApiError::respond('INVALID_STATUS', 'Only pending enrolments can be confirmed.', 422);
+        }
+
+        $before = $enrolment->toArray();
+        $enrolment->update(['status' => 'confirmed']);
+
+        $this->auditLogger->record('enrolment.confirm', 'enrolment', $id, before: $before, after: $enrolment->toArray());
+
+        return response()->json(['data' => $enrolment]);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, $id) {}
+    public function cancel(Request $request, int $id): JsonResponse
+    {
+        $enrolment = Enrolment::findOrFail($id);
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy($id) {}
+        if (! in_array($enrolment->status, ['pending', 'confirmed'])) {
+            return ApiError::respond('INVALID_STATUS', 'Cannot cancel enrolment in current status.', 422);
+        }
+
+        $before = $enrolment->toArray();
+        $enrolment->update(['status' => 'cancelled']);
+
+        $this->auditLogger->record('enrolment.cancel', 'enrolment', $id, before: $before, after: $enrolment->toArray());
+
+        return response()->json(['data' => $enrolment]);
+    }
 }
