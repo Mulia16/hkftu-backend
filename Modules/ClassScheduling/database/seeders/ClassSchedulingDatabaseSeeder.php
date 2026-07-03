@@ -12,6 +12,7 @@ class ClassSchedulingDatabaseSeeder extends Seeder
             CentreSeeder::class,
             ClassroomSeeder::class,
             HolidaySeeder::class,
+            ClassSeeder::class,
         ]);
     }
 }

@@ -25,7 +25,7 @@ class CourseController extends Controller
         $query = Course::with(['season', 'subject.categories', 'classes.centre', 'classes.classroom'])
             ->where('status', 'published')
             ->when($request->season_id, fn ($q) => $q->where('season_id', $request->season_id))
-            ->when($request->category_id, fn ($q) => $q->whereHas('subject.categories', fn ($q) => $q->where('id', $request->category_id)))
+            ->when($request->category_id, fn ($q) => $q->whereHas('subject.categories', fn ($q) => $q->where('id', $request->category_id)->orWhere('parent_id', $request->category_id)))
             ->when($request->keyword, fn ($q) => $q->where(function ($q) use ($request) {
                 $q->where('course_code', 'ilike', "%{$request->keyword}%")
                     ->orWhereHas('subject', fn ($q) => $q->where('name', 'ilike', "%{$request->keyword}%"));

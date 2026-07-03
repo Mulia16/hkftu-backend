@@ -1,17 +1,17 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
     public function up(): void
     {
-        Schema::createIfNotExists('enrolment');
+        DB::statement('CREATE SCHEMA IF NOT EXISTS enrolment');
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('enrolment');
+        DB::statement('DROP SCHEMA IF EXISTS enrolment CASCADE');
     }
 };
