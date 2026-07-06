@@ -3,54 +3,100 @@
 namespace Modules\Attendance\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Support\ApiError;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Modules\Attendance\DTOs\BatchAttendanceData;
+use Modules\Attendance\Models\AttendanceRecord;
+use Modules\Attendance\Services\AttendanceService;
+use Modules\Auth\Services\AuditLogger;
+use Modules\ClassScheduling\Models\ClassSession;
+use Modules\ClassScheduling\Models\CourseClass;
 
 class AttendanceController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function __construct(
+        private AttendanceService $attendanceService,
+        private AuditLogger $auditLogger,
+    ) {}
+
+    public function grid(int $classId): JsonResponse
     {
-        return view('attendance::index');
+        $class = CourseClass::findOrFail($classId);
+        $data = $this->attendanceService->getGrid($class);
+
+        return response()->json(['data' => $data]);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function save(BatchAttendanceData $data, Request $request): JsonResponse
     {
-        return view('attendance::create');
+        $session = ClassSession::findOrFail($data->class_session_id);
+        $user = $request->user();
+
+        $results = $this->attendanceService->batchUpsert(
+            $data->class_session_id,
+            $data->records,
+            $user->id,
+        );
+
+        $this->auditLogger->record('attendance.save', 'attendance', $session->id, after: [
+            'session_id' => $session->id,
+            'records_count' => $results->count(),
+        ]);
+
+        return response()->json(['data' => $results]);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request) {}
-
-    /**
-     * Show the specified resource.
-     */
-    public function show($id)
+    public function submit(int $sessionId, Request $request): JsonResponse
     {
-        return view('attendance::show');
+        $session = ClassSession::findOrFail($sessionId);
+        $user = $request->user();
+
+        $result = $this->attendanceService->submit($session, $user->id);
+
+        $this->auditLogger->record('attendance.submit', 'attendance', $session->id, after: $result);
+
+        return response()->json(['data' => $result]);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit($id)
+    public function show(int $id): JsonResponse
     {
-        return view('attendance::edit');
+        $record = AttendanceRecord::with(['classSession', 'enrolment.learner', 'marker'])->findOrFail($id);
+
+        return response()->json(['data' => $record]);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, $id) {}
+    public function update(int $id, Request $request): JsonResponse
+    {
+        $request->validate([
+            'status' => ['required', 'in:present,absent,late,excused'],
+            'remarks' => ['nullable', 'string', 'max:500'],
+        ]);
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy($id) {}
+        $record = AttendanceRecord::findOrFail($id);
+        $before = $record->toArray();
+
+        $record->update([
+            'status' => $request->input('status'),
+            'remarks' => $request->input('remarks'),
+            'marked_by' => $request->user()->id,
+            'marked_at' => now(),
+        ]);
+
+        $this->auditLogger->record('attendance.update', 'attendance', $id, before: $before, after: $record->toArray());
+
+        return response()->json(['data' => $record]);
+    }
+
+    public function learnerHistory(Request $request): JsonResponse
+    {
+        $learnerId = $request->integer('learner_id');
+        if (! $learnerId) {
+            return ApiError::respond('MISSING_LEARNER_ID', 'learner_id is required.', 422);
+        }
+
+        $history = $this->attendanceService->getLearnerHistory($learnerId);
+
+        return response()->json(['data' => $history]);
+    }
 }
