@@ -15,7 +15,7 @@ class StoreWaitlistData extends Data
     {
         return [
             'class_id' => ['required', 'exists:class_scheduling.classes,id'],
-            'learner_id' => ['required', 'exists:auth.learner_profiles,id'],
+            'learner_id' => ['required', 'integer'],
         ];
     }
 }

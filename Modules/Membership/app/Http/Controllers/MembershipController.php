@@ -18,7 +18,7 @@ class MembershipController extends Controller
     public function verify(Request $request): JsonResponse
     {
         $request->validate([
-            'learner_profile_id' => 'required|exists:auth.learner_profiles,id',
+            'learner_profile_id' => 'required|exists:pgsql,auth.learner_profiles,id',
             'membership_no' => 'nullable|string|max:50',
         ]);
 

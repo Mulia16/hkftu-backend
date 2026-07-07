@@ -17,7 +17,7 @@ class BatchAttendanceData extends Data
         return [
             'class_session_id' => ['required', 'exists:class_scheduling.class_sessions,id'],
             'records' => ['required', 'array', 'min:1'],
-            'records.*.enrolment_id' => ['required', 'exists:enrolment.enrolments,id'],
+            'records.*.enrolment_id' => ['required', 'integer'],
             'records.*.status' => ['required', 'in:present,absent,late,excused'],
             'records.*.remarks' => ['nullable', 'string', 'max:500'],
         ];

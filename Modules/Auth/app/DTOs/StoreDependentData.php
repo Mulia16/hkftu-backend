@@ -14,7 +14,7 @@ class StoreDependentData extends Data
     public static function rules(): array
     {
         return [
-            'learner_profile_id' => ['required', 'exists:auth.learner_profiles,id'],
+            'learner_profile_id' => ['required', 'integer'],
             'relationship' => ['nullable', 'in:parent,guardian,other'],
         ];
     }

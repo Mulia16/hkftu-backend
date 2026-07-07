@@ -25,7 +25,7 @@ class StoreLearnerData extends Data
     public static function rules(): array
     {
         return [
-            'user_id' => ['required', 'exists:auth.users,id'],
+            'user_id' => ['required', 'integer'],
             'name_en' => ['required', 'string', 'max:255'],
             'name_zh' => ['nullable', 'string', 'max:255'],
             'id_type' => ['nullable', 'string', 'max:20'],

@@ -95,7 +95,7 @@ class ClassController extends Controller
             'min_students' => 'sometimes|integer|min:1',
             'start_date' => 'sometimes|date',
             'end_date' => 'sometimes|date|after_or_equal:start_date',
-            'instructor_id' => 'nullable|exists:auth.users,id',
+            'instructor_id' => 'nullable|exists:pgsql,auth.users,id',
         ]);
 
         $centreId = $data['centre_id'] ?? $class->centre_id;

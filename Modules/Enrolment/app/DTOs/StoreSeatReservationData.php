@@ -15,8 +15,8 @@ class StoreSeatReservationData extends Data
     public static function rules(): array
     {
         return [
-            'class_id' => ['required', 'exists:class_scheduling.classes,id'],
-            'learner_id' => ['required', 'exists:auth.learner_profiles,id'],
+            'class_id' => ['required', 'integer'],
+            'learner_id' => ['required', 'integer'],
             'channel' => ['required', 'in:online_member,online_public,counter,proxy'],
         ];
     }

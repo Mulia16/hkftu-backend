@@ -7,6 +7,7 @@ use Modules\Attendance\Database\Seeders\AttendanceDatabaseSeeder;
 use Modules\Auth\Database\Seeders\AuthDatabaseSeeder;
 use Modules\ClassScheduling\Database\Seeders\ClassSchedulingDatabaseSeeder;
 use Modules\CourseCatalogue\Database\Seeders\CourseCatalogueDatabaseSeeder;
+use Modules\Payment\Database\Seeders\PaymentDatabaseSeeder;
 
 class DatabaseSeeder extends Seeder
 {
@@ -18,6 +19,7 @@ class DatabaseSeeder extends Seeder
             ClassSchedulingDatabaseSeeder::class,
             NoticeSeeder::class,
             AttendanceDatabaseSeeder::class,
+            PaymentDatabaseSeeder::class,
         ]);
     }
 }

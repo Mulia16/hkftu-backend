@@ -13,7 +13,7 @@ class CancelSeatReservationData extends Data
     public static function rules(): array
     {
         return [
-            'learner_id' => ['required', 'exists:auth.learner_profiles,id'],
+            'learner_id' => ['required', 'integer'],
         ];
     }
 }

@@ -3,54 +3,179 @@
 namespace Modules\Payment\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Support\ApiError;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Modules\Auth\Services\AuditLogger;
+use Modules\Enrolment\Models\SeatReservation;
+use Modules\Payment\DTOs\ManualUploadData;
+use Modules\Payment\DTOs\StorePaymentIntentData;
+use Modules\Payment\Models\PaymentIntent;
+use Modules\Payment\Services\PaymentService;
+use Modules\Payment\Services\RazerMsService;
 
 class PaymentController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function __construct(
+        private PaymentService $paymentService,
+        private AuditLogger $auditLogger,
+    ) {}
+
+    public function processRazerMs(Request $request): JsonResponse
     {
-        return view('payment::index');
+        $request->validate(['reservation_id' => ['required', 'integer']]);
+
+        $reservation = SeatReservation::findOrFail($request->input('reservation_id'));
+        $user = $request->user();
+
+        $orderId = 'HKFTU-'.time().'-'.$reservation->id;
+
+        $intent = PaymentIntent::create([
+            'enrolment_id' => $reservation->enrolment_id ?? $reservation->id,
+            'amount' => $reservation->amount_snapshot_json['total'] ?? 0,
+            'currency' => 'HKD',
+            'method' => 'razerms',
+            'status' => 'pending',
+            'gateway' => 'razerms',
+            'gateway_intent_id' => $orderId,
+            'expires_at' => now()->addMinutes(30),
+        ]);
+
+        $rms = app(RazerMsService::class);
+        $returnUrl = url('/payment/return');
+
+        try {
+            $paymentUrl = $rms->getPaymentUrl(
+                orderId: $orderId,
+                amount: (float) $intent->amount,
+                currency: 'HKD',
+                billName: $user->name,
+                billEmail: $user->email,
+                billDesc: 'HKFTU Class Registration',
+                returnUrl: $returnUrl,
+            );
+
+            return response()->json(['data' => ['payment_url' => $paymentUrl]]);
+        } catch (\Exception $e) {
+            $intent->update(['status' => 'failed']);
+
+            return ApiError::respond('GATEWAY_ERROR', 'Payment gateway error: '.$e->getMessage(), 502);
+        }
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function createIntent(StorePaymentIntentData $data, Request $request): JsonResponse
     {
-        return view('payment::create');
+        $intent = $this->paymentService->createIntent($data, $request->user()?->id);
+
+        $this->auditLogger->record('payment.intent.create', 'payment_intent', $intent->id, after: $intent->toArray());
+
+        return response()->json(['data' => $intent], 201);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request) {}
-
-    /**
-     * Show the specified resource.
-     */
-    public function show($id)
+    public function showIntent(int $id): JsonResponse
     {
-        return view('payment::show');
+        $intent = PaymentIntent::with(['enrolment.courseClass.course.subject', 'transactions', 'receipt'])->findOrFail($id);
+
+        return response()->json(['data' => $intent]);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit($id)
+    public function uploadProof(Request $request): JsonResponse
     {
-        return view('payment::edit');
+        $request->validate([
+            'payment_intent_id' => ['required', 'integer'],
+            'payment_proof' => ['required', 'image', 'max:5120'],
+        ]);
+
+        $intent = PaymentIntent::findOrFail($request->input('payment_intent_id'));
+
+        if ($intent->status !== 'pending') {
+            return ApiError::respond('INVALID_STATUS', 'Payment intent is not pending.', 422);
+        }
+
+        $transaction = $this->paymentService->uploadProof(
+            new ManualUploadData(
+                payment_intent_id: (int) $request->input('payment_intent_id'),
+                payment_proof: $request->file('payment_proof'),
+            ),
+            $request->user()->id,
+        );
+
+        $this->auditLogger->record('payment.proof.upload', 'payment_transaction', $transaction->id, after: $transaction->toArray());
+
+        return response()->json(['data' => $transaction], 201);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, $id) {}
+    public function myPayments(Request $request): JsonResponse
+    {
+        $learner = $request->user()->learnerProfile;
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy($id) {}
+        if (! $learner) {
+            return ApiError::respond('NO_LEARNER_PROFILE', 'No learner profile found.', 404);
+        }
+
+        $payments = $this->paymentService->listForLearner($learner->id);
+
+        return response()->json($payments);
+    }
+
+    public function index(Request $request): JsonResponse
+    {
+        $payments = $this->paymentService->listAll(
+            $request->input('status'),
+            $request->integer('enrolment_id'),
+        );
+
+        return response()->json($payments);
+    }
+
+    public function handleGatewayReturn(Request $request): JsonResponse
+    {
+        $intent = PaymentIntent::where('gateway_intent_id', $request->input('orderid'))
+            ->firstOrFail();
+
+        if ($intent->status === 'paid') {
+            return response()->json(['data' => $intent->load('receipt')]);
+        }
+
+        $rms = app(RazerMsService::class);
+
+        $key = md5(
+            $request->input('tranID').
+            $request->input('orderid').
+            $request->input('status').
+            $request->input('domain').
+            $request->input('amount').
+            $request->input('currency')
+        );
+
+        $isValid = $rms->verifySignature(
+            $request->input('paydate'),
+            $request->input('domain'),
+            $key,
+            $request->input('appcode'),
+            $request->input('skey'),
+        );
+
+        if (! $isValid) {
+            $intent->update(['status' => 'failed']);
+
+            return ApiError::respond('INVALID_SIGNATURE', 'Payment signature verification failed.', 422);
+        }
+
+        if ($request->input('status') != '00') {
+            $intent->update(['status' => 'failed']);
+
+            return ApiError::respond('PAYMENT_FAILED', 'Payment was not completed.', 422);
+        }
+
+        if ((float) $request->input('amount') != (float) $intent->amount) {
+            $intent->update(['status' => 'failed']);
+
+            return ApiError::respond('AMOUNT_MISMATCH', 'Payment amount mismatch.', 422);
+        }
+
+        $this->paymentService->confirmGatewayPayment($intent, $request->input('tranID'));
+
+        return response()->json(['data' => $intent->fresh(['enrolment', 'receipt'])]);
+    }
 }

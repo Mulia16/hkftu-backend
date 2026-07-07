@@ -17,7 +17,7 @@ class StoreAttendanceData extends Data
     {
         return [
             'class_session_id' => ['required', 'exists:class_scheduling.class_sessions,id'],
-            'enrolment_id' => ['required', 'exists:enrolment.enrolments,id'],
+            'enrolment_id' => ['required', 'integer'],
             'status' => ['required', 'in:present,absent,late,excused'],
             'remarks' => ['nullable', 'string', 'max:500'],
         ];

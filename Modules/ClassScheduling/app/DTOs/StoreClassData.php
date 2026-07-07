@@ -32,7 +32,7 @@ class StoreClassData extends Data
             'min_students' => ['nullable', 'integer', 'min:1'],
             'start_date' => ['required', 'date'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date'],
-            'instructor_id' => ['nullable', 'exists:auth.users,id'],
+            'instructor_id' => ['nullable', 'integer'],
             'schedule_pattern' => ['nullable', 'array'],
             'schedule_pattern.type' => ['required_with:schedule_pattern', 'in:weekly,one_off'],
             'schedule_pattern.days_of_week' => ['nullable', 'array'],
