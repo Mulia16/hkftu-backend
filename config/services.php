@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'razor_ms' => [
+        'merchant_id' => env('RMS_MERCHANT_ID'),
+        'verify_key' => env('RMS_VERIFY_KEY'),
+        'secret_key' => env('RMS_SECRET_KEY'),
+        'environment' => env('RMS_ENVIRONMENT', 'sandbox'),
+    ],
+
 ];

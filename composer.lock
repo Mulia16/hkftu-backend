@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "12b53445bc3fb5b7936b806a9147a875",
+    "content-hash": "5e9b1b6441cf6fd5e79ddfbb9bdf3580",
     "packages": [
         {
             "name": "barryvdh/laravel-dompdf",
@@ -4973,6 +4973,64 @@
                 "source": "https://github.com/ramsey/uuid/tree/4.9.2"
             },
             "time": "2025-12-14T04:43:48+00:00"
+        },
+        {
+            "name": "razermerchantservices/payment",
+            "version": "1.0.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/RazerMS/SDK-RazerMS_PHP.git",
+                "reference": "21de93cb8372c95ac7b36ca8f9bbc7cbcf4b481f"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/RazerMS/SDK-RazerMS_PHP/zipball/21de93cb8372c95ac7b36ca8f9bbc7cbcf4b481f",
+                "reference": "21de93cb8372c95ac7b36ca8f9bbc7cbcf4b481f",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=7.3"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^9"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "1.0.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "RazerMerchantServices\\": "src/lib"
+                }
+            },
+            "scripts": {
+                "test": [
+                    "vendor/bin/phpunit --testdox -c phpunit.xml"
+                ]
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Safwan Hakim",
+                    "email": "hakim.yacob@razer.com"
+                }
+            ],
+            "description": "A PHP library for Razer Merchant Services payment gateway",
+            "homepage": "https://merchant.razer.com/",
+            "keywords": [
+                "payment",
+                "razer",
+                "razermerchantservices"
+            ],
+            "support": {
+                "source": "https://github.com/RazerMS/SDK-RazerMS_PHP/tree/1.0.1",
+                "issues": "https://github.com/RazerMS/SDK-RazerMS_PHP/issues"
+            },
+            "time": "2023-04-05T02:19:59+00:00"
         },
         {
             "name": "sabberworm/php-css-parser",
@@ -12369,5 +12427,5 @@
         "php": "^8.3"
     },
     "platform-dev": {},
-    "plugin-api-version": "2.9.0"
+    "plugin-api-version": "2.6.0"
 }
