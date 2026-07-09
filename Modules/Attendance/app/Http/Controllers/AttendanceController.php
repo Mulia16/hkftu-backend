@@ -59,21 +59,21 @@ class AttendanceController extends Controller
         return response()->json(['data' => $result]);
     }
 
-    public function show(int $id): JsonResponse
+    public function show(string $id): JsonResponse
     {
-        $record = AttendanceRecord::with(['classSession', 'enrolment.learner', 'marker'])->findOrFail($id);
+        $record = AttendanceRecord::with(['classSession', 'enrolment.learner', 'marker'])->findOrFail((int) $id);
 
         return response()->json(['data' => $record]);
     }
 
-    public function update(int $id, Request $request): JsonResponse
+    public function update(string $id, Request $request): JsonResponse
     {
         $request->validate([
             'status' => ['required', 'in:present,absent,late,excused'],
             'remarks' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $record = AttendanceRecord::findOrFail($id);
+        $record = AttendanceRecord::findOrFail((int) $id);
         $before = $record->toArray();
 
         $record->update([
