@@ -6,11 +6,8 @@ use Illuminate\Database\Seeder;
 
 class CertificateDatabaseSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        // $this->call([]);
+        $this->call(CertificateRecordSeeder::class);
     }
 }
