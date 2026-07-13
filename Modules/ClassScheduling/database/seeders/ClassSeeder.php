@@ -9,6 +9,7 @@ use Modules\ClassScheduling\Models\CourseClass;
 use Modules\ClassScheduling\Models\SchedulePattern;
 use Modules\ClassScheduling\Services\SessionGeneratorService;
 use Modules\CourseCatalogue\Models\Course;
+use Modules\Auth\Models\User;
 
 class ClassSeeder extends Seeder
 {
@@ -16,6 +17,7 @@ class ClassSeeder extends Seeder
     {
         $courses = Course::with('subject')->where('status', 'published')->get();
         $centres = Centre::where('status', 'active')->get();
+        $instructor = User::whereHas('roles', fn ($q) => $q->where('name', 'instructor'))->first();
 
         if ($courses->isEmpty() || $centres->isEmpty()) {
             return;
@@ -60,7 +62,7 @@ class ClassSeeder extends Seeder
                     'min_students' => 5,
                     'start_date' => '2026-07-01',
                     'end_date' => '2026-09-30',
-                    'instructor_id' => null,
+                    'instructor_id' => $instructor?->id,
                     'status' => 'published',
                 ],
             );
