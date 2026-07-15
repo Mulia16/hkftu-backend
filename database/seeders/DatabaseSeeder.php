@@ -8,6 +8,7 @@ use Modules\Auth\Database\Seeders\AuthDatabaseSeeder;
 use Modules\Certificate\Database\Seeders\CertificateDatabaseSeeder;
 use Modules\ClassScheduling\Database\Seeders\ClassSchedulingDatabaseSeeder;
 use Modules\CourseCatalogue\Database\Seeders\CourseCatalogueDatabaseSeeder;
+use Modules\InstructorFinance\Database\Seeders\InstructorFinanceDatabaseSeeder;
 use Modules\Payment\Database\Seeders\PaymentDatabaseSeeder;
 
 class DatabaseSeeder extends Seeder
@@ -22,6 +23,7 @@ class DatabaseSeeder extends Seeder
             AttendanceDatabaseSeeder::class,
             PaymentDatabaseSeeder::class,
             CertificateDatabaseSeeder::class,
+            InstructorFinanceDatabaseSeeder::class,
         ]);
     }
 }
