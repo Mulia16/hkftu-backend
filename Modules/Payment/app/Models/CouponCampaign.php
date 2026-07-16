@@ -71,6 +71,7 @@ class CouponCampaign extends Model
             'percentage' => $baseAmount * ($this->value / 100),
             'fixed' => min($this->value, $baseAmount),
             'full_subsidy' => $baseAmount,
+            'material_waiver' => min($this->value, $baseAmount),
             default => 0,
         };
     }

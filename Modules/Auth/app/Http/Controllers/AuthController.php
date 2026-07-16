@@ -9,7 +9,9 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Modules\Auth\DTOs\AuthenticatedUserData;
 use Modules\Auth\DTOs\LoginRequestData;
+use Modules\Auth\DTOs\RegisterRequestData;
 use Modules\Auth\DTOs\UpdateUserProfileData;
+use Modules\Auth\Models\LearnerProfile;
 use Modules\Auth\Models\User;
 use Modules\Auth\Services\AuditLogger;
 use Modules\Auth\Services\SecurityEventLogger;
@@ -20,6 +22,54 @@ class AuthController extends Controller
         private SecurityEventLogger $securityEvents,
         private AuditLogger $auditLogger,
     ) {}
+
+    public function register(RegisterRequestData $data)
+    {
+        $existingUser = User::where('email', $data->email)->first();
+
+        if ($existingUser) {
+            return ApiError::respond(
+                code: 'EMAIL_EXISTS',
+                message: 'An account with this email already exists.',
+                status: 422,
+                fieldErrors: ['email' => ['This email is already registered.']],
+            );
+        }
+
+        $user = User::create([
+            'name' => $data->name,
+            'email' => $data->email,
+            'phone' => $data->phone,
+            'password' => $data->password,
+            'status' => 'active',
+        ]);
+
+        $user->assignRole('public_learner');
+
+        LearnerProfile::create([
+            'user_id' => $user->id,
+            'name_en' => $data->name,
+            'phone' => $data->phone,
+            'email' => $data->email,
+            'membership_status' => 'none',
+            'status' => 'active',
+        ]);
+
+        $token = $user->createToken('api')->plainTextToken;
+
+        $this->securityEvents->record('register_success', 'info', $user->id);
+        $this->auditLogger->record(
+            action: 'auth.register',
+            resourceType: 'user',
+            resourceId: $user->id,
+            actorUserId: $user->id,
+            after: ['name' => $user->name, 'email' => $user->email],
+        );
+
+        $responseData = AuthenticatedUserData::fromUser($user, $token)->toArray();
+
+        return response()->json(['data' => $responseData], 201);
+    }
 
     public function login(LoginRequestData $data)
     {

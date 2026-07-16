@@ -10,6 +10,7 @@ use Modules\Auth\Http\Controllers\MfaController;
 Route::prefix('v1')->group(function () {
     Route::middleware(['throttle:auth'])->group(function () {
         Route::post('auth/login', [AuthController::class, 'login']);
+        Route::post('auth/register', [AuthController::class, 'register']);
         Route::post('auth/password/request', [AuthController::class, 'forgotPassword']);
         Route::post('auth/password/reset', [AuthController::class, 'resetPassword']);
     });

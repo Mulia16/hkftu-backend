@@ -29,7 +29,7 @@ class CouponController extends Controller
             'code' => ['required', 'string', 'max:50'],
             'name' => ['required', 'string', 'max:255'],
             'season_id' => ['nullable', 'integer'],
-            'discount_type' => ['required', 'in:fixed,percentage,full_subsidy'],
+            'discount_type' => ['required', 'in:fixed,percentage,full_subsidy,material_waiver'],
             'value' => ['required', 'numeric', 'min:0'],
             'valid_from' => ['nullable', 'date'],
             'valid_to' => ['nullable', 'date', 'after_or_equal:valid_from'],
@@ -55,7 +55,7 @@ class CouponController extends Controller
     {
         $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
-            'discount_type' => ['sometimes', 'in:fixed,percentage,full_subsidy'],
+            'discount_type' => ['sometimes', 'in:fixed,percentage,full_subsidy,material_waiver'],
             'value' => ['sometimes', 'numeric', 'min:0'],
             'valid_from' => ['nullable', 'date'],
             'valid_to' => ['nullable', 'date'],
