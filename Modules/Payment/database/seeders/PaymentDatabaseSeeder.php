@@ -9,5 +9,6 @@ class PaymentDatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call(PaymentRecordSeeder::class);
+        $this->call(ReconciliationSeeder::class);
     }
 }

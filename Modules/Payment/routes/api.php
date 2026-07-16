@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Modules\Payment\Http\Controllers\AdminPaymentController;
 use Modules\Payment\Http\Controllers\CouponController;
 use Modules\Payment\Http\Controllers\PaymentController;
+use Modules\Payment\Http\Controllers\ReconciliationController;
 use Modules\Payment\Http\Controllers\RefundController;
 
 Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
@@ -32,6 +33,13 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::post('coupons/{id}/generate-codes', [CouponController::class, 'generateCodes']);
     Route::post('coupons/validate', [CouponController::class, 'validateCoupon']);
     Route::post('coupons/redeem', [CouponController::class, 'redeem']);
+
+    Route::get('reconciliation/batches', [ReconciliationController::class, 'index']);
+    Route::post('reconciliation/batches', [ReconciliationController::class, 'store']);
+    Route::get('reconciliation/batches/{id}', [ReconciliationController::class, 'show']);
+    Route::post('reconciliation/batches/{id}/match', [ReconciliationController::class, 'match']);
+    Route::post('reconciliation/batches/{id}/close', [ReconciliationController::class, 'close']);
+    Route::get('reconciliation/batches/{id}/exceptions', [ReconciliationController::class, 'exceptions']);
 });
 
 Route::prefix('v1')->group(function () {

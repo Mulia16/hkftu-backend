@@ -9,6 +9,8 @@ use Modules\Certificate\Database\Seeders\CertificateDatabaseSeeder;
 use Modules\ClassScheduling\Database\Seeders\ClassSchedulingDatabaseSeeder;
 use Modules\CourseCatalogue\Database\Seeders\CourseCatalogueDatabaseSeeder;
 use Modules\InstructorFinance\Database\Seeders\InstructorFinanceDatabaseSeeder;
+use Modules\Notification\Database\Seeders\NotificationDatabaseSeeder;
+use Modules\Reporting\Database\Seeders\ReportingDatabaseSeeder;
 use Modules\Payment\Database\Seeders\PaymentDatabaseSeeder;
 
 class DatabaseSeeder extends Seeder
@@ -24,6 +26,8 @@ class DatabaseSeeder extends Seeder
             PaymentDatabaseSeeder::class,
             CertificateDatabaseSeeder::class,
             InstructorFinanceDatabaseSeeder::class,
+            NotificationDatabaseSeeder::class,
+            ReportingDatabaseSeeder::class,
         ]);
     }
 }

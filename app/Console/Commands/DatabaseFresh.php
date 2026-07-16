@@ -25,6 +25,7 @@ class DatabaseFresh extends Command
         'payment',
         'certificate',
         'instructor_finance',
+        'reporting',
     ];
 
     public function handle(): int

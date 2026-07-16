@@ -89,4 +89,36 @@ class InstructorController extends Controller
 
         return response()->json(['data' => $contract], 201);
     }
+
+    public function signInSheet(int $id): JsonResponse
+    {
+        $instructor = InstructorProfile::findOrFail($id);
+
+        $classes = CourseClass::where('instructor_id', $instructor->user_id)
+            ->where('status', 'published')
+            ->with(['course.subject', 'centre', 'classroom', 'sessions' => function ($q) {
+                $q->orderBy('date')->orderBy('start_time');
+            }])
+            ->get();
+
+        $sheets = $classes->map(function ($class) {
+            return [
+                'class_id' => $class->id,
+                'class_code' => $class->class_code,
+                'subject' => $class->course?->subject?->name,
+                'centre' => $class->centre?->name,
+                'classroom' => $class->classroom?->name,
+                'sessions' => $class->sessions->map(function ($s) {
+                    return [
+                        'session_no' => $s->session_no,
+                        'date' => $s->date,
+                        'start_time' => $s->start_time,
+                        'end_time' => $s->end_time,
+                    ];
+                }),
+            ];
+        });
+
+        return response()->json(['data' => $sheets]);
+    }
 }

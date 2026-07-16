@@ -3,54 +3,82 @@
 namespace Modules\Notification\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Modules\Notification\Models\SupportTicket;
+use Modules\Notification\Services\NotificationService;
 
 class NotificationController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function index(Request $request, NotificationService $service): JsonResponse
     {
-        return view('notification::index');
+        $logs = $service->getLogs(
+            $request->input('channel'),
+            $request->input('status'),
+        )->paginate($request->input('per_page', 25));
+
+        return response()->json($logs);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function send(Request $request, NotificationService $service): JsonResponse
     {
-        return view('notification::create');
+        $request->validate([
+            'channel' => ['required', 'string', 'in:email,sms,push'],
+            'recipient' => ['required', 'string'],
+            'subject' => ['required', 'string'],
+            'body' => ['required', 'string'],
+        ]);
+
+        $log = $service->send(
+            $request->input('channel'),
+            $request->input('recipient'),
+            $request->input('subject'),
+            $request->input('body'),
+        );
+
+        return response()->json(['data' => $log], 201);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request) {}
-
-    /**
-     * Show the specified resource.
-     */
-    public function show($id)
+    public function storeTicket(Request $request): JsonResponse
     {
-        return view('notification::show');
+        $request->validate([
+            'subject' => ['required', 'string', 'max:255'],
+            'message' => ['required', 'string'],
+        ]);
+
+        $ticket = SupportTicket::create([
+            'user_id' => $request->user()->id,
+            'subject' => $request->input('subject'),
+            'message' => $request->input('message'),
+        ]);
+
+        return response()->json(['data' => $ticket], 201);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit($id)
+    public function tickets(Request $request): JsonResponse
     {
-        return view('notification::edit');
+        $query = SupportTicket::with(['user', 'responder']);
+
+        if ($status = $request->input('status')) {
+            $query->where('status', $status);
+        }
+
+        $tickets = $query->orderByDesc('created_at')->paginate($request->integer('per_page', 25));
+        return response()->json($tickets);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, $id) {}
+    public function respondTicket(Request $request, int $id): JsonResponse
+    {
+        $request->validate(['response' => ['required', 'string']]);
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy($id) {}
+        $ticket = SupportTicket::findOrFail($id);
+        $ticket->update([
+            'response' => $request->input('response'),
+            'responded_by' => $request->user()->id,
+            'responded_at' => now(),
+            'status' => 'resolved',
+        ]);
+
+        return response()->json(['data' => $ticket->load(['user', 'responder'])]);
+    }
 }

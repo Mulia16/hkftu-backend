@@ -11,6 +11,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::get('instructors', [InstructorController::class, 'index']);
     Route::get('instructors/{id}', [InstructorController::class, 'show']);
     Route::get('instructors/{id}/teaching-summary', [InstructorController::class, 'teachingSummary']);
+    Route::get('instructors/{id}/sign-in-sheet', [InstructorController::class, 'signInSheet']);
     Route::post('instructor-contracts/generate', [InstructorController::class, 'generateContract']);
 
     Route::apiResource('instructor-fee-rules', InstructorFeeRuleController::class);

@@ -41,8 +41,11 @@ class AuthController extends Controller
 
         $this->securityEvents->record('login_success', 'info', $user->id);
 
+        $responseData = AuthenticatedUserData::fromUser($user, $token)->toArray();
+        $responseData['mfa_required'] = (bool) $user->mfa_enabled;
+
         return response()->json([
-            'data' => AuthenticatedUserData::fromUser($user, $token),
+            'data' => $responseData,
         ]);
     }
 
