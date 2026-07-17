@@ -5,6 +5,7 @@ namespace Modules\CourseCatalogue\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Modules\Auth\Models\User;
+use Modules\CourseCatalogue\Enums\CourseTextStatus;
 
 class CourseTextVersion extends Model
 {
@@ -22,6 +23,7 @@ class CourseTextVersion extends Model
     protected function casts(): array
     {
         return [
+            'status' => CourseTextStatus::class,
             'published_at' => 'datetime',
         ];
     }

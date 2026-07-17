@@ -11,11 +11,13 @@ use Modules\ClassScheduling\Models\CourseClass;
 use Modules\Enrolment\DTOs\StoreWaitlistData;
 use Modules\Enrolment\Models\Waitlist;
 use Modules\Enrolment\Services\SeatReservationService;
+use Modules\Enrolment\Services\WaitlistService;
 
 class WaitlistController extends Controller
 {
     public function __construct(
         private SeatReservationService $reservationService,
+        private WaitlistService $waitlistService,
         private AuditLogger $auditLogger,
     ) {}
 
@@ -67,5 +69,44 @@ class WaitlistController extends Controller
         $this->auditLogger->record('waitlist.offer', 'waitlist', $id);
 
         return response()->json(['data' => $waitlist]);
+    }
+
+    public function accept(Request $request, int $id): JsonResponse
+    {
+        $user = $request->user();
+
+        try {
+            $waitlist = $this->waitlistService->accept($id, $user->learnerProfile->id);
+        } catch (\RuntimeException $e) {
+            return ApiError::respond('OFFER_EXPIRED', $e->getMessage(), 422);
+        }
+
+        $this->auditLogger->record('waitlist.accept', 'waitlist', $id);
+
+        return response()->json(['data' => $waitlist]);
+    }
+
+    public function cancel(Request $request, int $id): JsonResponse
+    {
+        $user = $request->user();
+
+        $waitlist = $this->waitlistService->cancel($id, $user->learnerProfile->id);
+
+        $this->auditLogger->record('waitlist.cancel', 'waitlist', $id);
+
+        return response()->json(['data' => $waitlist]);
+    }
+
+    public function myWaitlists(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $waitlists = Waitlist::with('courseClass.course.subject')
+            ->where('learner_id', $user->learnerProfile?->id)
+            ->whereIn('status', ['waiting', 'offered'])
+            ->orderByDesc('created_at')
+            ->get();
+
+        return response()->json(['data' => $waitlists]);
     }
 }

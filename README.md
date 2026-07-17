@@ -66,4 +66,6 @@ php artisan test               # Pest tests
 vendor/bin/pint                # Lint
 php artisan route:clear        # Clear route cache
 php artisan storage:link       # File upload symlink
+php artisan schedule:run
+* * * * * cd /path-to-project && php artisan schedule:run >> /dev/null 2>&1
 ```

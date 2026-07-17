@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Modules\ClassScheduling\Models\Centre;
 
 class LearnerProfile extends Model
 {
@@ -28,6 +29,7 @@ class LearnerProfile extends Model
         'membership_status',
         'membership_verified_at',
         'status',
+        'centre_id',
     ];
 
     protected function casts(): array
@@ -35,6 +37,7 @@ class LearnerProfile extends Model
         return [
             'dob' => 'date',
             'membership_verified_at' => 'datetime',
+            'id_no_encrypted' => 'encrypted',
         ];
     }
 
@@ -43,6 +46,11 @@ class LearnerProfile extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function centre(): BelongsTo
+    {
+        return $this->belongsTo(Centre::class);
     }
 
     public function dependents(): HasMany

@@ -4,6 +4,7 @@ namespace Modules\Attendance\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Modules\Attendance\Enums\AttendanceStatus;
 use Modules\Auth\Models\User;
 use Modules\ClassScheduling\Models\ClassSession;
 use Modules\Enrolment\Models\Enrolment;
@@ -24,6 +25,7 @@ class AttendanceRecord extends Model
     protected function casts(): array
     {
         return [
+            'status' => AttendanceStatus::class,
             'marked_at' => 'datetime',
         ];
     }

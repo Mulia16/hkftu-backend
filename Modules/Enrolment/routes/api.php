@@ -28,4 +28,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
 
     Route::post('waitlists', [WaitlistController::class, 'store']);
     Route::post('waitlists/{id}/offer', [WaitlistController::class, 'offer']);
+    Route::post('waitlists/{id}/accept', [WaitlistController::class, 'accept']);
+    Route::post('waitlists/{id}/cancel', [WaitlistController::class, 'cancel']);
+    Route::get('my-waitlists', [WaitlistController::class, 'myWaitlists']);
 });

@@ -3,6 +3,7 @@
 namespace Modules\Attendance\Services;
 
 use Illuminate\Support\Collection;
+use Modules\Attendance\Enums\AttendanceStatus;
 use Modules\Attendance\Models\AttendanceRecord;
 use Modules\ClassScheduling\Models\ClassSession;
 use Modules\ClassScheduling\Models\CourseClass;
@@ -103,7 +104,7 @@ class AttendanceService
                 AttendanceRecord::create([
                     'class_session_id' => $session->id,
                     'enrolment_id' => $enrolmentId,
-                    'status' => 'absent',
+                    'status' => AttendanceStatus::Absent->value,
                     'marked_by' => $submittedBy,
                     'marked_at' => now(),
                 ]);
@@ -132,8 +133,8 @@ class AttendanceService
         foreach ($byClass as $classId => $classRecords) {
             $first = $classRecords->first();
             $total = $classRecords->count();
-            $present = $classRecords->where('status', 'present')->count();
-            $late = $classRecords->where('status', 'late')->count();
+            $present = $classRecords->where('status', AttendanceStatus::Present)->count();
+            $late = $classRecords->where('status', AttendanceStatus::Late)->count();
 
             $history[] = [
                 'class_id' => $classId,
@@ -141,8 +142,8 @@ class AttendanceService
                 'total_sessions' => $total,
                 'present' => $present,
                 'late' => $late,
-                'absent' => $classRecords->where('status', 'absent')->count(),
-                'excused' => $classRecords->where('status', 'excused')->count(),
+                'absent' => $classRecords->where('status', AttendanceStatus::Absent)->count(),
+                'excused' => $classRecords->where('status', AttendanceStatus::Excused)->count(),
                 'attendance_rate' => $total > 0 ? round(($present + $late) / $total * 100, 1) : 0,
             ];
         }
@@ -159,10 +160,10 @@ class AttendanceService
             'total_students' => $totalStudents,
             'total_sessions' => $totalSessions,
             'total_records' => $records->count(),
-            'present' => $records->where('status', 'present')->count(),
-            'absent' => $records->where('status', 'absent')->count(),
-            'late' => $records->where('status', 'late')->count(),
-            'excused' => $records->where('status', 'excused')->count(),
+            'present' => $records->where('status', AttendanceStatus::Present)->count(),
+            'absent' => $records->where('status', AttendanceStatus::Absent)->count(),
+            'late' => $records->where('status', AttendanceStatus::Late)->count(),
+            'excused' => $records->where('status', AttendanceStatus::Excused)->count(),
         ];
     }
 }

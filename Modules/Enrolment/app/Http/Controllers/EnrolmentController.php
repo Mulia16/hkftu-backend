@@ -13,12 +13,14 @@ use Modules\Enrolment\DTOs\StoreEnrolmentData;
 use Modules\Enrolment\Models\Enrolment;
 use Modules\Enrolment\Services\EligibilityService;
 use Modules\Enrolment\Services\SeatReservationService;
+use Modules\Enrolment\Services\WaitlistService;
 
 class EnrolmentController extends Controller
 {
     public function __construct(
         private SeatReservationService $reservationService,
         private EligibilityService $eligibilityService,
+        private WaitlistService $waitlistService,
         private AuditLogger $auditLogger,
     ) {}
 
@@ -105,6 +107,11 @@ class EnrolmentController extends Controller
         $enrolment->update(['status' => 'cancelled']);
 
         $this->auditLogger->record('enrolment.cancel', 'enrolment', $id, before: $before, after: $enrolment->toArray());
+
+        $class = $enrolment->courseClass;
+        if ($class) {
+            $this->waitlistService->offerNextSeat($class);
+        }
 
         return response()->json(['data' => $enrolment]);
     }

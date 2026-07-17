@@ -7,6 +7,7 @@ use App\Support\ApiError;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Modules\Attendance\DTOs\BatchAttendanceData;
+use Modules\Attendance\DTOs\UpdateAttendanceData;
 use Modules\Attendance\Models\AttendanceRecord;
 use Modules\Attendance\Services\AttendanceService;
 use Modules\Auth\Services\AuditLogger;
@@ -66,20 +67,15 @@ class AttendanceController extends Controller
         return response()->json(['data' => $record]);
     }
 
-    public function update(string $id, Request $request): JsonResponse
+    public function update(string $id, UpdateAttendanceData $data): JsonResponse
     {
-        $request->validate([
-            'status' => ['required', 'in:present,absent,late,excused'],
-            'remarks' => ['nullable', 'string', 'max:500'],
-        ]);
-
         $record = AttendanceRecord::findOrFail((int) $id);
         $before = $record->toArray();
 
         $record->update([
-            'status' => $request->input('status'),
-            'remarks' => $request->input('remarks'),
-            'marked_by' => $request->user()->id,
+            'status' => $data->status,
+            'remarks' => $data->remarks,
+            'marked_by' => request()->user()->id,
             'marked_at' => now(),
         ]);
 

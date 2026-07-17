@@ -19,6 +19,9 @@ class LearnerController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        $user = $request->user();
+        $centreId = $user->staffProfile?->centre_id;
+
         $query = LearnerProfile::with('user')
             ->when($request->search, function ($q) use ($request) {
                 $q->where('name_en', 'ilike', "%{$request->search}%")
@@ -26,6 +29,7 @@ class LearnerController extends Controller
                     ->orWhere('membership_no', 'ilike', "%{$request->search}%");
             })
             ->when($request->membership_status, fn ($q) => $q->where('membership_status', $request->membership_status))
+            ->when($centreId, fn ($q) => $q->where('centre_id', $centreId))
             ->orderByDesc('created_at');
 
         return response()->json(['data' => $query->paginate($request->integer('per_page', 25))]);
@@ -78,7 +82,7 @@ class LearnerController extends Controller
         }
 
         if (isset($validated['id_no'])) {
-            $validated['id_no_encrypted'] = encrypt($validated['id_no']);
+            $validated['id_no_encrypted'] = $validated['id_no'];
             unset($validated['id_no']);
         }
 
@@ -113,7 +117,7 @@ class LearnerController extends Controller
         $before = $profile->toArray();
 
         if (isset($validated['id_no'])) {
-            $validated['id_no_encrypted'] = encrypt($validated['id_no']);
+            $validated['id_no_encrypted'] = $validated['id_no'];
             unset($validated['id_no']);
         }
 

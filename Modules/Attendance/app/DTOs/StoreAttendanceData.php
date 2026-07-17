@@ -2,6 +2,7 @@
 
 namespace Modules\Attendance\DTOs;
 
+use Modules\Attendance\Enums\AttendanceStatus;
 use Spatie\LaravelData\Data;
 
 class StoreAttendanceData extends Data
@@ -9,7 +10,7 @@ class StoreAttendanceData extends Data
     public function __construct(
         public int $class_session_id,
         public int $enrolment_id,
-        public string $status = 'absent',
+        public AttendanceStatus $status = AttendanceStatus::Absent,
         public ?string $remarks = null,
     ) {}
 

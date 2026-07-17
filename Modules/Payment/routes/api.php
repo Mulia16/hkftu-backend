@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Modules\Payment\Http\Controllers\AdminPaymentController;
 use Modules\Payment\Http\Controllers\CouponController;
 use Modules\Payment\Http\Controllers\PaymentController;
+use Modules\Payment\Http\Controllers\ReceiptController;
 use Modules\Payment\Http\Controllers\ReconciliationController;
 use Modules\Payment\Http\Controllers\RefundController;
 
@@ -13,6 +14,10 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::get('payments/intents/{id}', [PaymentController::class, 'showIntent']);
     Route::post('payments/manual-upload', [PaymentController::class, 'uploadProof']);
     Route::get('payments', [PaymentController::class, 'myPayments']);
+
+    Route::get('receipts/{receiptNo}', [ReceiptController::class, 'show']);
+    Route::get('receipts/{receiptNo}/download', [ReceiptController::class, 'download']);
+    Route::get('my-receipts', [ReceiptController::class, 'myReceipts']);
 
     Route::get('admin/payments', [AdminPaymentController::class, 'index']);
     Route::get('admin/payments/{id}', [AdminPaymentController::class, 'show']);

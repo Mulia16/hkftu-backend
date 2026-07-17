@@ -2,12 +2,13 @@
 
 namespace Modules\Attendance\DTOs;
 
+use Modules\Attendance\Enums\AttendanceStatus;
 use Spatie\LaravelData\Data;
 
 class UpdateAttendanceData extends Data
 {
     public function __construct(
-        public string $status,
+        public AttendanceStatus $status,
         public ?string $remarks = null,
     ) {}
 

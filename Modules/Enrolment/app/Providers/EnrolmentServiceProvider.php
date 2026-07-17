@@ -3,6 +3,8 @@
 namespace Modules\Enrolment\Providers;
 
 use Illuminate\Console\Scheduling\Schedule;
+use Modules\Enrolment\Jobs\ExpireWaitlistOffers;
+use Modules\Enrolment\Jobs\ReleaseExpiredReservations;
 use Nwidart\Modules\Support\ModuleServiceProvider;
 
 class EnrolmentServiceProvider extends ModuleServiceProvider
@@ -39,8 +41,9 @@ class EnrolmentServiceProvider extends ModuleServiceProvider
      *
      * @param  $schedule
      */
-    // protected function configureSchedules(Schedule $schedule): void
-    // {
-    //     $schedule->command('inspire')->hourly();
-    // }
+    protected function configureSchedules(Schedule $schedule): void
+    {
+        $schedule->job(new ReleaseExpiredReservations)->everyMinute();
+        $schedule->job(new ExpireWaitlistOffers)->everyMinute();
+    }
 }

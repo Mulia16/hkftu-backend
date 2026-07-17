@@ -5,12 +5,16 @@ namespace Modules\CourseCatalogue\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Modules\CourseCatalogue\Enums\CourseTextStatus;
 use Modules\CourseCatalogue\Models\CourseTextVersion;
 use Modules\CourseCatalogue\Models\Subject;
+use Modules\CourseCatalogue\Services\CourseTextService;
 
 class CourseTextController extends Controller
 {
-    private const ALLOWED_TAGS = '<p><br><strong><em><u><s><ul><ol><li><h2><h3><h4><blockquote><a><span>';
+    public function __construct(
+        private CourseTextService $courseTextService,
+    ) {}
 
     public function index(int $subjectId): JsonResponse
     {
@@ -42,14 +46,9 @@ class CourseTextController extends Controller
             'status' => 'sometimes|in:draft,review,approved,published,archived',
         ]);
 
-        $lastVersion = CourseTextVersion::where('subject_id', $subject->id)->max('version_no') ?? 0;
+        $status = isset($data['status']) ? CourseTextStatus::from($data['status']) : null;
 
-        $version = CourseTextVersion::create([
-            'subject_id' => $subject->id,
-            'version_no' => $lastVersion + 1,
-            'content_html' => $this->sanitizeHtml($data['content_html']),
-            'status' => $data['status'] ?? 'draft',
-        ]);
+        $version = $this->courseTextService->create($subject->id, $data['content_html'], $status);
 
         return response()->json(['data' => $version], 201);
     }
@@ -62,29 +61,19 @@ class CourseTextController extends Controller
             'status' => 'required|in:draft,review,approved,published,archived',
         ]);
 
-        if ($data['status'] === 'published') {
-            CourseTextVersion::where('subject_id', $subjectId)
-                ->where('status', 'published')
-                ->where('id', '!=', $version->id)
-                ->update(['status' => 'archived']);
+        $target = CourseTextStatus::from($data['status']);
 
-            $version->published_at = now();
+        try {
+            $version = $this->courseTextService->transition($version, $target, $request->user()->id);
+        } catch (\DomainException $e) {
+            return response()->json([
+                'error' => [
+                    'code' => 'INVALID_TRANSITION',
+                    'message' => $e->getMessage(),
+                ],
+            ], 422);
         }
 
-        $version->update($data);
-
         return response()->json(['data' => $version]);
-    }
-
-    private function sanitizeHtml(string $html): string
-    {
-        $cleaned = strip_tags($html, self::ALLOWED_TAGS);
-
-        $cleaned = preg_replace('/on\w+\s*=\s*["\'][^"\']*["\']/i', '', $cleaned);
-        $cleaned = preg_replace('/on\w+\s*=\s*\S+/i', '', $cleaned);
-        $cleaned = preg_replace('/href\s*=\s*["\']javascript:[^"\']*["\']/i', 'href="#"', $cleaned);
-        $cleaned = preg_replace('/style\s*=\s*["\'][^"\']*expression\s*\([^"\']*["\']/i', '', $cleaned);
-
-        return $cleaned;
     }
 }

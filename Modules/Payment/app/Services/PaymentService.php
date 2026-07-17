@@ -12,6 +12,9 @@ use Modules\Payment\Models\PaymentTransaction;
 
 class PaymentService
 {
+    public function __construct(
+        private ReceiptPdfService $receiptPdfService,
+    ) {}
     public function createIntent(StorePaymentIntentData $data, ?int $createdBy = null): PaymentIntent
     {
         $enrolment = Enrolment::findOrFail($data->enrolment_id);
@@ -77,7 +80,7 @@ class PaymentService
 
             $receiptNo = ReceiptService::generateReceiptNumber();
 
-            $intent->receipt()->create([
+            $receipt = $intent->receipt()->create([
                 'receipt_no' => $receiptNo,
                 'enrolment_id' => $intent->enrolment_id,
                 'amount' => $intent->amount,
@@ -85,6 +88,8 @@ class PaymentService
                 'issued_by' => $adminId,
                 'status' => 'issued',
             ]);
+
+            $this->receiptPdfService->generate($receipt);
 
             return $transaction->fresh(['paymentIntent.receipt', 'approver']);
         });
@@ -164,13 +169,15 @@ class PaymentService
 
             $receiptNo = ReceiptService::generateReceiptNumber();
 
-            $intent->receipt()->create([
+            $receipt = $intent->receipt()->create([
                 'receipt_no' => $receiptNo,
                 'enrolment_id' => $intent->enrolment_id,
                 'amount' => $intent->amount,
                 'issued_at' => now(),
                 'status' => 'issued',
             ]);
+
+            $this->receiptPdfService->generate($receipt);
         });
     }
 }

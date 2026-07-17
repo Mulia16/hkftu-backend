@@ -9,25 +9,26 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Modules\ClassScheduling\Models\CourseClass;
-use Modules\Enrolment\Models\SeatReservation;
-use Modules\Enrolment\Services\SeatReservationService;
+use Modules\Enrolment\Models\Waitlist;
 use Modules\Enrolment\Services\WaitlistService;
 
-class ReleaseExpiredReservations implements ShouldQueue
+class ExpireWaitlistOffers implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function handle(SeatReservationService $service, WaitlistService $waitlistService): void
+    public function handle(WaitlistService $waitlistService): void
     {
-        $affectedClassIds = SeatReservation::where('status', 'active')
+        $affectedClassIds = Waitlist::where('status', 'offered')
             ->where('expires_at', '<=', now())
             ->pluck('class_id')
             ->unique();
 
-        $released = $service->releaseExpired();
+        $expired = Waitlist::where('status', 'offered')
+            ->where('expires_at', '<=', now())
+            ->update(['status' => 'expired']);
 
-        if ($released > 0) {
-            Log::info("Released {$released} expired seat reservations.");
+        if ($expired > 0) {
+            Log::info("Expired {$expired} waitlist offers.");
 
             foreach ($affectedClassIds as $classId) {
                 $class = CourseClass::find($classId);
