@@ -20,16 +20,22 @@ Route::prefix('v1')->group(function () {
         Route::get('users/me', [AuthController::class, 'me']);
         Route::patch('users/me', [AuthController::class, 'updateProfile']);
 
-        Route::get('audit-logs', [AuditLogController::class, 'index']);
+        Route::get('audit-logs', [AuditLogController::class, 'index'])
+            ->middleware('role:system_admin,centre_manager');
 
-        Route::get('dashboard', [DashboardController::class, 'index']);
+        Route::get('dashboard', [DashboardController::class, 'index'])
+            ->middleware('role:system_admin,centre_manager,course_planner,counter_staff,finance_staff');
 
         Route::get('learners/me', [LearnerController::class, 'myProfile']);
         Route::patch('learners/me', [LearnerController::class, 'updateMyProfile']);
-        Route::get('learners', [LearnerController::class, 'index']);
-        Route::post('learners', [LearnerController::class, 'store']);
-        Route::get('learners/{id}', [LearnerController::class, 'show']);
-        Route::patch('learners/{id}', [LearnerController::class, 'update']);
+        Route::get('learners', [LearnerController::class, 'index'])
+            ->middleware('role:system_admin,centre_manager,counter_staff');
+        Route::post('learners', [LearnerController::class, 'store'])
+            ->middleware('role:system_admin,centre_manager,counter_staff');
+        Route::get('learners/{id}', [LearnerController::class, 'show'])
+            ->middleware('role:system_admin,centre_manager,counter_staff');
+        Route::patch('learners/{id}', [LearnerController::class, 'update'])
+            ->middleware('role:system_admin,centre_manager,counter_staff');
 
         Route::get('dependents', [LearnerController::class, 'myDependents']);
         Route::post('dependents', [LearnerController::class, 'storeDependent']);

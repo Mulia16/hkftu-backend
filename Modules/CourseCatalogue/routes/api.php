@@ -20,26 +20,58 @@ Route::prefix('v1')->group(function () {
     });
 
     Route::middleware(['auth:sanctum'])->group(function () {
-        Route::post('seasons', [SeasonController::class, 'store']);
-        Route::patch('seasons/{season}', [SeasonController::class, 'update']);
-        Route::delete('seasons/{season}', [SeasonController::class, 'destroy']);
+        Route::post('seasons', [SeasonController::class, 'store'])
+            ->middleware('role:course_planner,system_admin');
+        Route::patch('seasons/{season}', [SeasonController::class, 'update'])
+            ->middleware('role:course_planner,system_admin');
+        Route::delete('seasons/{season}', [SeasonController::class, 'destroy'])
+            ->middleware('role:course_planner,system_admin');
 
-        Route::post('categories', [CategoryController::class, 'store']);
-        Route::patch('categories/{category}', [CategoryController::class, 'update']);
-        Route::delete('categories/{category}', [CategoryController::class, 'destroy']);
+        Route::post('categories', [CategoryController::class, 'store'])
+            ->middleware('role:course_planner,system_admin');
+        Route::patch('categories/{category}', [CategoryController::class, 'update'])
+            ->middleware('role:course_planner,system_admin');
+        Route::delete('categories/{category}', [CategoryController::class, 'destroy'])
+            ->middleware('role:course_planner,system_admin');
 
-        Route::apiResource('subjects', SubjectController::class);
+        Route::get('subjects', [SubjectController::class, 'index'])
+            ->middleware('role:course_planner,centre_manager,system_admin');
+        Route::post('subjects', [SubjectController::class, 'store'])
+            ->middleware('role:course_planner,system_admin');
+        Route::get('subjects/{subject}', [SubjectController::class, 'show'])
+            ->middleware('role:course_planner,centre_manager,system_admin');
+        Route::patch('subjects/{subject}', [SubjectController::class, 'update'])
+            ->middleware('role:course_planner,system_admin');
+        Route::delete('subjects/{subject}', [SubjectController::class, 'destroy'])
+            ->middleware('role:course_planner,system_admin');
 
-        Route::apiResource('courses', CourseController::class);
+        Route::get('courses', [CourseController::class, 'index'])
+            ->middleware('role:course_planner,centre_manager,system_admin');
+        Route::post('courses', [CourseController::class, 'store'])
+            ->middleware('role:course_planner,system_admin');
+        Route::get('courses/{course}', [CourseController::class, 'show'])
+            ->middleware('role:course_planner,centre_manager,system_admin');
+        Route::patch('courses/{course}', [CourseController::class, 'update'])
+            ->middleware('role:course_planner,system_admin');
+        Route::delete('courses/{course}', [CourseController::class, 'destroy'])
+            ->middleware('role:course_planner,system_admin');
 
-        Route::get('course-texts/{subjectId}', [CourseTextController::class, 'index']);
-        Route::get('course-texts/{subjectId}/{versionId}', [CourseTextController::class, 'show']);
-        Route::post('course-texts/{subjectId}', [CourseTextController::class, 'store']);
-        Route::patch('course-texts/{subjectId}/{versionId}', [CourseTextController::class, 'update']);
+        Route::get('course-texts/{subjectId}', [CourseTextController::class, 'index'])
+            ->middleware('role:course_planner,centre_manager,system_admin');
+        Route::get('course-texts/{subjectId}/{versionId}', [CourseTextController::class, 'show'])
+            ->middleware('role:course_planner,centre_manager,system_admin');
+        Route::post('course-texts/{subjectId}', [CourseTextController::class, 'store'])
+            ->middleware('role:course_planner,system_admin');
+        Route::patch('course-texts/{subjectId}/{versionId}', [CourseTextController::class, 'update'])
+            ->middleware('role:course_planner,centre_manager,system_admin');
 
-        Route::get('admin/notices', [NoticeController::class, 'adminIndex']);
-        Route::post('notices', [NoticeController::class, 'store']);
-        Route::patch('notices/{id}', [NoticeController::class, 'update']);
-        Route::delete('notices/{id}', [NoticeController::class, 'destroy']);
+        Route::get('admin/notices', [NoticeController::class, 'adminIndex'])
+            ->middleware('role:system_admin,centre_manager');
+        Route::post('notices', [NoticeController::class, 'store'])
+            ->middleware('role:system_admin');
+        Route::patch('notices/{id}', [NoticeController::class, 'update'])
+            ->middleware('role:system_admin');
+        Route::delete('notices/{id}', [NoticeController::class, 'destroy'])
+            ->middleware('role:system_admin');
     });
 });

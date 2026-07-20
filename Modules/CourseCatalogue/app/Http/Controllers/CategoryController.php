@@ -29,7 +29,17 @@ class CategoryController extends Controller
 
     public function store(StoreCategoryData $data): JsonResponse
     {
-        $category = Category::create($data->toArray());
+        $validated = $data->toArray();
+
+        if (empty($validated['code'])) {
+            $validated['code'] = strtoupper(preg_replace('/[^a-z0-9]+/', '_', strtolower($validated['name_en'])));
+        }
+
+        if (!isset($validated['sort_order'])) {
+            $validated['sort_order'] = Category::where('parent_id', $validated['parent_id'] ?? null)->max('sort_order') + 1;
+        }
+
+        $category = Category::create($validated);
 
         return response()->json(['data' => $category], 201);
     }
@@ -38,11 +48,13 @@ class CategoryController extends Controller
     {
         $validated = $request->validate([
             'parent_id' => 'nullable|exists:course_catalogue.categories,id',
-            'code' => 'sometimes|string|max:50|unique:course_catalogue.categories,code,'.$category->id,
             'name_en' => 'sometimes|string|max:255',
             'name_zh' => 'sometimes|string|max:255',
-            'sort_order' => 'nullable|integer|min:0',
         ]);
+
+        if (isset($validated['name_en']) && !isset($validated['code'])) {
+            $validated['code'] = strtoupper(preg_replace('/[^a-z0-9]+/', '_', strtolower($validated['name_en'])));
+        }
 
         $category->update($validated);
 

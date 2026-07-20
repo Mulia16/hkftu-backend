@@ -13,6 +13,8 @@ class ReportingDatabaseSeeder extends Seeder
             [
                 'code' => 'SUBJECT_DATA',
                 'name' => 'Subject Data Report',
+                'group' => 'Course Planning',
+                'description' => 'Inspect subject data, fees, material fees, and fee increases.',
                 'format' => 'xlsx',
                 'query_key' => 'subject_data',
                 'parameters_json' => ['status' => 'filter by subject status'],
@@ -20,6 +22,8 @@ class ReportingDatabaseSeeder extends Seeder
             [
                 'code' => 'CLASS_CLASH',
                 'name' => 'Class Clash Report',
+                'group' => 'Scheduling',
+                'description' => 'List schedule conflicts between classes, rooms, and instructors.',
                 'format' => 'xlsx',
                 'query_key' => 'class_clash',
                 'parameters_json' => ['season_id' => 'required', 'centre_id' => 'optional'],
@@ -27,6 +31,8 @@ class ReportingDatabaseSeeder extends Seeder
             [
                 'code' => 'CENTRE_COURSE',
                 'name' => 'Centre Course Report',
+                'group' => 'Scheduling',
+                'description' => 'Courses offered per centre for the season.',
                 'format' => 'xlsx',
                 'query_key' => 'centre_course',
                 'parameters_json' => ['season_id' => 'required', 'centre_id' => 'optional'],
@@ -34,6 +40,8 @@ class ReportingDatabaseSeeder extends Seeder
             [
                 'code' => 'QUOTA_TABLE',
                 'name' => 'Quota Table Report',
+                'group' => 'Registration',
+                'description' => 'Course quota and seat availability overview.',
                 'format' => 'xlsx',
                 'query_key' => 'quota_table',
                 'parameters_json' => ['season_id' => 'required', 'centre_id' => 'optional'],
@@ -41,6 +49,8 @@ class ReportingDatabaseSeeder extends Seeder
             [
                 'code' => 'FULL_CLASS',
                 'name' => 'Full Class Report',
+                'group' => 'Registration',
+                'description' => 'Classes that have reached full capacity.',
                 'format' => 'xlsx',
                 'query_key' => 'full_class',
                 'parameters_json' => ['season_id' => 'optional', 'centre_id' => 'optional'],
@@ -48,6 +58,8 @@ class ReportingDatabaseSeeder extends Seeder
             [
                 'code' => 'DANGER_CLASS',
                 'name' => 'Danger Class Report',
+                'group' => 'Registration',
+                'description' => 'Classes below minimum enrolment threshold.',
                 'format' => 'xlsx',
                 'query_key' => 'danger_class',
                 'parameters_json' => ['season_id' => 'optional', 'centre_id' => 'optional'],
@@ -55,20 +67,26 @@ class ReportingDatabaseSeeder extends Seeder
             [
                 'code' => 'RECEIPT_TOTAL',
                 'name' => 'Receipt Total Report',
-                'format' => 'pdf',
+                'group' => 'Registration',
+                'description' => 'Total receipts by centre and period.',
+                'format' => 'xlsx',
                 'query_key' => 'receipt_total',
                 'parameters_json' => ['season_id' => 'optional', 'centre_id' => 'optional', 'date_from' => 'optional', 'date_to' => 'optional'],
             ],
             [
                 'code' => 'COURSE_INCOME',
                 'name' => 'Course Income Report',
-                'format' => 'pdf',
+                'group' => 'Finance',
+                'description' => 'Income report for selected course or class.',
+                'format' => 'xlsx',
                 'query_key' => 'course_income',
                 'parameters_json' => ['season_id' => 'required', 'centre_id' => 'optional'],
             ],
             [
                 'code' => 'COUPON_USAGE',
                 'name' => 'Coupon Usage Report',
+                'group' => 'Registration',
+                'description' => 'Coupon usage summary mapped to receipts.',
                 'format' => 'xlsx',
                 'query_key' => 'coupon_usage',
                 'parameters_json' => ['season_id' => 'optional', 'date_from' => 'optional', 'date_to' => 'optional'],
@@ -76,6 +94,8 @@ class ReportingDatabaseSeeder extends Seeder
             [
                 'code' => 'CERTIFICATE_PRINT',
                 'name' => 'Certificate Print Report',
+                'group' => 'Completion',
+                'description' => 'Batch certificate printout for completed courses.',
                 'format' => 'pdf',
                 'query_key' => 'certificate_print',
                 'parameters_json' => ['class_id' => 'required'],
@@ -83,6 +103,8 @@ class ReportingDatabaseSeeder extends Seeder
             [
                 'code' => 'UNUSED_NUMBER',
                 'name' => 'Unused Number Report',
+                'group' => 'Course Planning',
+                'description' => 'Inspect unused course and subject numbers for the season.',
                 'format' => 'xlsx',
                 'query_key' => 'unused_number',
                 'parameters_json' => ['season_id' => 'required'],
@@ -90,20 +112,26 @@ class ReportingDatabaseSeeder extends Seeder
             [
                 'code' => 'COURSE_MANUSCRIPT',
                 'name' => 'Course Manuscript Printout',
-                'format' => 'pdf',
+                'group' => 'Course Planning',
+                'description' => 'Print course text and manuscript for brochure or review.',
+                'format' => 'xlsx',
                 'query_key' => 'course_manuscript',
                 'parameters_json' => ['class_id' => 'required'],
             ],
             [
                 'code' => 'INSTRUCTOR_DATA',
                 'name' => 'Instructor Data Report',
-                'format' => 'pdf',
+                'group' => 'Course Planning',
+                'description' => 'Print instructor profile and qualification information.',
+                'format' => 'xlsx',
                 'query_key' => 'instructor_data',
                 'parameters_json' => ['instructor_id' => 'optional', 'status' => 'optional'],
             ],
             [
                 'code' => 'SUBJECT_COURSE_DATA',
                 'name' => 'Subject/Course Data Report',
+                'group' => 'Course Planning',
+                'description' => 'Print combined subject and course information by season.',
                 'format' => 'xlsx',
                 'query_key' => 'subject_course_data',
                 'parameters_json' => ['season_id' => 'optional', 'category_id' => 'optional'],
@@ -111,6 +139,8 @@ class ReportingDatabaseSeeder extends Seeder
             [
                 'code' => 'CLASSROOM_TABLE',
                 'name' => 'Classroom Table',
+                'group' => 'Scheduling',
+                'description' => 'Classroom usage and availability status.',
                 'format' => 'xlsx',
                 'query_key' => 'classroom_table',
                 'parameters_json' => ['centre_id' => 'optional'],
@@ -118,6 +148,8 @@ class ReportingDatabaseSeeder extends Seeder
             [
                 'code' => 'NO_PAGE_NUMBER',
                 'name' => 'No Page Number Report',
+                'group' => 'Course Planning',
+                'description' => 'List courses missing brochure page numbers.',
                 'format' => 'xlsx',
                 'query_key' => 'no_page_number',
                 'parameters_json' => ['season_id' => 'required'],
@@ -125,6 +157,8 @@ class ReportingDatabaseSeeder extends Seeder
             [
                 'code' => 'INSTRUCTOR_CONTRACT',
                 'name' => 'Instructor Contract',
+                'group' => 'Pre-Class',
+                'description' => 'Generate instructor contract document.',
                 'format' => 'pdf',
                 'query_key' => 'instructor_contract',
                 'parameters_json' => ['instructor_id' => 'required', 'season_id' => 'optional'],
@@ -132,6 +166,8 @@ class ReportingDatabaseSeeder extends Seeder
             [
                 'code' => 'ADVANCED_COURSE_NOTICE',
                 'name' => 'Advanced Course Notice',
+                'group' => 'Pre-Class',
+                'description' => 'Notify students about advanced course enrolment.',
                 'format' => 'pdf',
                 'query_key' => 'advanced_course_notice',
                 'parameters_json' => ['class_id' => 'required'],
@@ -139,6 +175,8 @@ class ReportingDatabaseSeeder extends Seeder
             [
                 'code' => 'ADVANCED_INSTRUCTOR_NOTICE',
                 'name' => 'Advanced Instructor Notice',
+                'group' => 'Pre-Class',
+                'description' => 'Notify instructor about upcoming class assignment.',
                 'format' => 'pdf',
                 'query_key' => 'advanced_instructor_notice',
                 'parameters_json' => ['instructor_id' => 'required', 'season_id' => 'optional'],
@@ -146,6 +184,8 @@ class ReportingDatabaseSeeder extends Seeder
             [
                 'code' => 'COURSE_ANALYSIS',
                 'name' => 'Course Analysis Report',
+                'group' => 'Registration',
+                'description' => 'Registration trends and course demand analysis.',
                 'format' => 'xlsx',
                 'query_key' => 'course_analysis',
                 'parameters_json' => ['season_id' => 'required', 'centre_id' => 'optional'],
@@ -153,6 +193,8 @@ class ReportingDatabaseSeeder extends Seeder
             [
                 'code' => 'STUDENT_PHONE_LIST',
                 'name' => 'Student Phone List',
+                'group' => 'Pre-Class',
+                'description' => 'Contact list for postponed or cancelled courses.',
                 'format' => 'xlsx',
                 'query_key' => 'student_phone_list',
                 'parameters_json' => ['class_id' => 'required'],
@@ -160,6 +202,8 @@ class ReportingDatabaseSeeder extends Seeder
             [
                 'code' => 'INSTRUCTOR_COMMUNICATION',
                 'name' => 'Instructor Communication Table',
+                'group' => 'Pre-Class',
+                'description' => 'Pre-class instructor communication tracking report.',
                 'format' => 'pdf',
                 'query_key' => 'instructor_communication',
                 'parameters_json' => ['season_id' => 'required', 'instructor_id' => 'optional'],
@@ -167,6 +211,8 @@ class ReportingDatabaseSeeder extends Seeder
             [
                 'code' => 'INSTRUCTOR_SIGN_IN',
                 'name' => 'Instructor Sign-In Sheet',
+                'group' => 'Pre-Class',
+                'description' => 'Instructor sign-in sheet for class sessions.',
                 'format' => 'pdf',
                 'query_key' => 'instructor_sign_in',
                 'parameters_json' => ['class_id' => 'required'],
@@ -174,6 +220,8 @@ class ReportingDatabaseSeeder extends Seeder
             [
                 'code' => 'CERTIFICATE_APPLICATION',
                 'name' => 'Certificate Application Form',
+                'group' => 'Completion',
+                'description' => 'Certificate application form with eligibility check.',
                 'format' => 'pdf',
                 'query_key' => 'certificate_application',
                 'parameters_json' => ['class_id' => 'required'],
@@ -181,6 +229,8 @@ class ReportingDatabaseSeeder extends Seeder
             [
                 'code' => 'ATTENDANCE_SHEET',
                 'name' => 'Attendance Sheet',
+                'group' => 'In-Class',
+                'description' => 'Attendance input sheet for class sessions.',
                 'format' => 'pdf',
                 'query_key' => 'attendance_sheet',
                 'parameters_json' => ['class_id' => 'required'],
@@ -188,6 +238,8 @@ class ReportingDatabaseSeeder extends Seeder
             [
                 'code' => 'NAME_LABELS',
                 'name' => 'Name Labels / Student Cards',
+                'group' => 'Pre-Class',
+                'description' => 'Printable student name labels and cards.',
                 'format' => 'pdf',
                 'query_key' => 'name_labels',
                 'parameters_json' => ['class_id' => 'required'],
@@ -195,13 +247,17 @@ class ReportingDatabaseSeeder extends Seeder
             [
                 'code' => 'INSTRUCTOR_PAYMENT_SLIP',
                 'name' => 'Instructor Payment Slip',
-                'format' => 'pdf',
+                'group' => 'Finance',
+                'description' => 'Instructor support payment order slip.',
+                'format' => 'xlsx',
                 'query_key' => 'instructor_payment_slip',
                 'parameters_json' => ['instructor_id' => 'required', 'month' => 'required'],
             ],
             [
                 'code' => 'INSTRUCTOR_CHEQUE',
                 'name' => 'Instructor Cheque',
+                'group' => 'Finance',
+                'description' => 'Cheque printing output for instructor payments.',
                 'format' => 'pdf',
                 'query_key' => 'instructor_cheque',
                 'parameters_json' => ['instructor_id' => 'required', 'month' => 'required'],
@@ -209,6 +265,8 @@ class ReportingDatabaseSeeder extends Seeder
             [
                 'code' => 'INSTRUCTOR_FEE_SUMMARY',
                 'name' => 'Instructor Fee Summary',
+                'group' => 'Finance',
+                'description' => 'Fee summary by instructor and season.',
                 'format' => 'xlsx',
                 'query_key' => 'instructor_fee_summary',
                 'parameters_json' => ['season_id' => 'required', 'instructor_id' => 'optional'],
@@ -216,6 +274,8 @@ class ReportingDatabaseSeeder extends Seeder
             [
                 'code' => 'QUARTERLY_ANALYSIS',
                 'name' => 'Quarterly Course Analysis',
+                'group' => 'Quarterly/Annual',
+                'description' => 'End-of-quarter course and registration analysis.',
                 'format' => 'xlsx',
                 'query_key' => 'quarterly_analysis',
                 'parameters_json' => ['year' => 'required', 'quarter' => 'required'],
@@ -223,6 +283,8 @@ class ReportingDatabaseSeeder extends Seeder
             [
                 'code' => 'ANNUAL_TAX_EXPORT',
                 'name' => 'Annual Tax Export',
+                'group' => 'Quarterly/Annual',
+                'description' => 'Annual tax data export in Excel format.',
                 'format' => 'xlsx',
                 'query_key' => 'annual_tax_export',
                 'parameters_json' => ['year' => 'required', 'instructor_id' => 'optional'],

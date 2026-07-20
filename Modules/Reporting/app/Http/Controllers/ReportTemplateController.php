@@ -10,8 +10,8 @@ class ReportTemplateController extends Controller
 {
     public function index(): JsonResponse
     {
-        $templates = ReportTemplate::orderBy('code')->paginate(20);
+        $templates = ReportTemplate::orderBy('group')->orderBy('name')->get();
 
-        return response()->json($templates);
+        return response()->json(['data' => $templates]);
     }
 }

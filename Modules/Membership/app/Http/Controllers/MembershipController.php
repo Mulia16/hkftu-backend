@@ -80,7 +80,7 @@ class MembershipController extends Controller
             ->orderByDesc('created_at')
             ->paginate($request->integer('per_page', 25));
 
-        return response()->json(['data' => $snapshots]);
+        return response()->json($snapshots);
     }
 
     public function verifications(Request $request, int $learnerProfileId): JsonResponse
@@ -89,7 +89,7 @@ class MembershipController extends Controller
             ->orderByDesc('created_at')
             ->paginate($request->integer('per_page', 25));
 
-        return response()->json(['data' => $verifications]);
+        return response()->json($verifications);
     }
 
     private function mockVerify(?string $membershipNo): array

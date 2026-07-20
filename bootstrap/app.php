@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Modules\Auth\Http\Middleware\Idempotency;
 use Modules\Auth\Http\Middleware\RequireMfa;
+use Modules\Auth\Http\Middleware\RoleMiddleware;
 use Modules\Auth\Http\Middleware\SetPermissionsTeam;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -26,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'idempotency' => Idempotency::class,
             'mfa' => RequireMfa::class,
+            'role' => RoleMiddleware::class,
         ]);
 
         Authenticate::redirectUsing(fn () => null);

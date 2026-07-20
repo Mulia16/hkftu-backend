@@ -23,7 +23,7 @@ class CourseTextService
 
     public function transition(CourseTextVersion $version, CourseTextStatus $target, int $userId): CourseTextVersion
     {
-        $current = CourseTextStatus::from($version->status);
+        $current = $version->status;
 
         if (! $current->canTransitionTo($target)) {
             throw new \DomainException(

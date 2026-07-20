@@ -134,6 +134,10 @@ class ClassController extends Controller
     {
         $class = CourseClass::with('clashResults')->findOrFail($id);
 
+        if ($class->status !== 'draft') {
+            return ApiError::respond('INVALID_STATUS', 'Only draft classes can be published.', 422);
+        }
+
         $errors = $class->clashResults->where('severity', 'error')->values();
 
         if ($errors->isNotEmpty()) {
@@ -145,6 +149,36 @@ class ClassController extends Controller
         $class->update(['status' => 'published']);
 
         $this->auditLogger->record('class.publish', 'class', $class->id);
+
+        return response()->json(['data' => $class]);
+    }
+
+    public function cancel(int $id): JsonResponse
+    {
+        $class = CourseClass::findOrFail($id);
+
+        if ($class->status !== 'published') {
+            return ApiError::respond('INVALID_STATUS', 'Only published classes can be cancelled.', 422);
+        }
+
+        $class->update(['status' => 'cancelled']);
+
+        $this->auditLogger->record('class.cancel', 'class', $class->id);
+
+        return response()->json(['data' => $class]);
+    }
+
+    public function complete(int $id): JsonResponse
+    {
+        $class = CourseClass::findOrFail($id);
+
+        if ($class->status !== 'published') {
+            return ApiError::respond('INVALID_STATUS', 'Only published classes can be completed.', 422);
+        }
+
+        $class->update(['status' => 'completed']);
+
+        $this->auditLogger->record('class.complete', 'class', $class->id);
 
         return response()->json(['data' => $class]);
     }

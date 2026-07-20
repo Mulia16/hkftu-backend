@@ -11,6 +11,8 @@ class ReportTemplate extends Model
     protected $fillable = [
         'code',
         'name',
+        'group',
+        'description',
         'format',
         'query_key',
         'parameters_json',

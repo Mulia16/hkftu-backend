@@ -75,7 +75,7 @@ class ReportService
 
             $isXlsx = $template->format === 'xlsx';
             $isPdf = $template->format === 'pdf';
-            $printableReports = ['attendance_sheet', 'name_labels', 'instructor_sign_in', 'certificate_application'];
+            $printableReports = ['attendance_sheet', 'name_labels', 'instructor_sign_in', 'certificate_application', 'certificate_print', 'instructor_contract', 'advanced_course_notice', 'advanced_instructor_notice', 'instructor_communication', 'instructor_cheque'];
 
             if ($isPdf && in_array($template->query_key, $printableReports)) {
                 $path = $this->generatePrintablePdf($template->query_key, $params, $data);
@@ -378,14 +378,22 @@ class ReportService
             ->join('class_scheduling.classes', 'enrolment.enrolments.class_id', '=', 'class_scheduling.classes.id')
             ->join('course_catalogue.courses', 'class_scheduling.classes.course_id', '=', 'course_catalogue.courses.id')
             ->join('course_catalogue.subjects', 'course_catalogue.courses.subject_id', '=', 'course_catalogue.subjects.id')
-            ->join('certificate.certificate_templates', 'certificate.certificates.template_id', '=', 'certificate.certificate_templates.id')
+            ->leftJoin('attendance.attendance_records', 'enrolment.enrolments.id', '=', 'attendance.attendance_records.enrolment_id')
             ->select(
-                'certificate.certificates.certificate_no',
                 'auth.learner_profiles.name_en',
                 'auth.learner_profiles.name_zh',
                 'course_catalogue.subjects.name as course',
-                'certificate.certificates.issued_at',
-                'certificate.certificate_templates.name as template'
+                'class_scheduling.classes.class_code',
+                'class_scheduling.classes.end_date as completion_date',
+                DB::raw('CASE WHEN COUNT(attendance.attendance_records.id) > 0 THEN ROUND(COUNT(CASE WHEN attendance.attendance_records.status IN (\'present\', \'late\') THEN 1 END)::numeric / COUNT(attendance.attendance_records.id) * 100, 1) ELSE 0 END as attendance_rate')
+            )
+            ->groupBy(
+                'auth.learner_profiles.id',
+                'auth.learner_profiles.name_en',
+                'auth.learner_profiles.name_zh',
+                'course_catalogue.subjects.name',
+                'class_scheduling.classes.class_code',
+                'class_scheduling.classes.end_date'
             )
             ->orderBy('auth.learner_profiles.name_en');
 
@@ -420,6 +428,8 @@ class ReportService
     {
         $query = DB::table('course_catalogue.course_text_versions')
             ->join('course_catalogue.subjects', 'course_catalogue.course_text_versions.subject_id', '=', 'course_catalogue.subjects.id')
+            ->join('course_catalogue.courses', 'course_catalogue.course_text_versions.subject_id', '=', 'course_catalogue.courses.subject_id')
+            ->join('class_scheduling.classes', 'course_catalogue.courses.id', '=', 'class_scheduling.classes.course_id')
             ->select(
                 'course_catalogue.subjects.subject_code',
                 'course_catalogue.subjects.name as subject',
@@ -427,8 +437,13 @@ class ReportService
                 'course_catalogue.course_text_versions.content_html',
                 'course_catalogue.course_text_versions.status'
             )
-            ->where('course_catalogue.course_text_versions.status', 'published')
-            ->orderBy('course_catalogue.subjects.subject_code');
+            ->where('course_catalogue.course_text_versions.status', 'published');
+
+        if (!empty($params['class_id'])) {
+            $query->where('class_scheduling.classes.id', $params['class_id']);
+        }
+
+        $query->orderBy('course_catalogue.subjects.subject_code');
 
         return $query->get();
     }
@@ -531,18 +546,37 @@ class ReportService
             ->join('class_scheduling.classes', 'instructor_finance.instructor_contracts.class_id', '=', 'class_scheduling.classes.id')
             ->join('course_catalogue.courses', 'class_scheduling.classes.course_id', '=', 'course_catalogue.courses.id')
             ->join('course_catalogue.subjects', 'course_catalogue.courses.subject_id', '=', 'course_catalogue.subjects.id')
+            ->join('class_scheduling.centres', 'class_scheduling.classes.centre_id', '=', 'class_scheduling.centres.id')
+            ->leftJoin('class_scheduling.class_sessions', 'class_scheduling.classes.id', '=', 'class_scheduling.class_sessions.class_id')
             ->select(
-                'auth.instructor_profiles.name as instructor',
-                'auth.instructor_profiles.instructor_no',
-                'course_catalogue.subjects.name as subject',
+                'auth.instructor_profiles.name as instructor_name',
+                'course_catalogue.subjects.name as course',
                 'class_scheduling.classes.class_code',
-                'instructor_finance.instructor_contracts.status',
-                'instructor_finance.instructor_contracts.signed_at'
+                'class_scheduling.centres.name as centre',
+                'class_scheduling.classes.start_date',
+                'class_scheduling.classes.end_date',
+                'instructor_finance.instructor_contracts.fee_amount',
+                'instructor_finance.instructor_contracts.fee_type',
+                DB::raw('COUNT(DISTINCT class_scheduling.class_sessions.id) as total_sessions')
+            )
+            ->groupBy(
+                'auth.instructor_profiles.name',
+                'course_catalogue.subjects.name',
+                'class_scheduling.classes.class_code',
+                'class_scheduling.centres.name',
+                'class_scheduling.classes.start_date',
+                'class_scheduling.classes.end_date',
+                'instructor_finance.instructor_contracts.fee_amount',
+                'instructor_finance.instructor_contracts.fee_type'
             )
             ->orderBy('auth.instructor_profiles.name');
 
         if (!empty($params['instructor_id'])) {
             $query->where('instructor_finance.instructor_contracts.instructor_id', $params['instructor_id']);
+        }
+
+        if (!empty($params['season_id'])) {
+            $query->where('course_catalogue.courses.season_id', $params['season_id']);
         }
 
         return $query->get();
@@ -554,21 +588,15 @@ class ReportService
             ->join('course_catalogue.courses', 'class_scheduling.classes.course_id', '=', 'course_catalogue.courses.id')
             ->join('course_catalogue.subjects', 'course_catalogue.courses.subject_id', '=', 'course_catalogue.subjects.id')
             ->join('class_scheduling.centres', 'class_scheduling.classes.centre_id', '=', 'class_scheduling.centres.id')
-            ->join('enrolment.enrolments', function ($join) {
-                $join->on('class_scheduling.classes.id', '=', 'enrolment.enrolments.class_id')
-                    ->where('enrolment.enrolments.status', '=', 'confirmed');
-            })
-            ->join('auth.learner_profiles', 'enrolment.enrolments.learner_id', '=', 'auth.learner_profiles.id')
             ->select(
-                'auth.learner_profiles.name_en',
-                'auth.learner_profiles.name_zh',
-                'auth.learner_profiles.email',
-                'auth.learner_profiles.phone',
-                'course_catalogue.subjects.name as current_course',
+                'course_catalogue.subjects.name as course_name',
                 'class_scheduling.classes.class_code',
-                'class_scheduling.centres.name as centre'
-            )
-            ->orderBy('auth.learner_profiles.name_en');
+                'class_scheduling.centres.name as centre',
+                'class_scheduling.classes.start_date',
+                'class_scheduling.classes.end_date',
+                'course_catalogue.subjects.tuition_fee',
+                DB::raw("CONCAT(class_scheduling.classes.schedule_day, ' ', class_scheduling.classes.start_time, '-', class_scheduling.classes.end_time) as schedule")
+            );
 
         if (!empty($params['class_id'])) {
             $query->where('class_scheduling.classes.id', $params['class_id']);
@@ -584,15 +612,30 @@ class ReportService
             ->join('course_catalogue.subjects', 'course_catalogue.courses.subject_id', '=', 'course_catalogue.subjects.id')
             ->join('class_scheduling.centres', 'class_scheduling.classes.centre_id', '=', 'class_scheduling.centres.id')
             ->join('auth.instructor_profiles', 'class_scheduling.classes.instructor_id', '=', 'auth.instructor_profiles.id')
+            ->leftJoin('enrolment.enrolments', function ($join) {
+                $join->on('class_scheduling.classes.id', '=', 'enrolment.enrolments.class_id')
+                    ->where('enrolment.enrolments.status', '=', 'confirmed');
+            })
             ->select(
-                'auth.instructor_profiles.name as instructor',
-                'auth.instructor_profiles.email',
-                'auth.instructor_profiles.phone',
-                'course_catalogue.subjects.name as subject',
+                'auth.instructor_profiles.name as instructor_name',
+                'course_catalogue.subjects.name as course',
                 'class_scheduling.classes.class_code',
                 'class_scheduling.centres.name as centre',
                 'class_scheduling.classes.start_date',
-                'class_scheduling.classes.end_date'
+                'class_scheduling.classes.end_date',
+                DB::raw("CONCAT(class_scheduling.classes.schedule_day, ' ', class_scheduling.classes.start_time, '-', class_scheduling.classes.end_time) as schedule"),
+                DB::raw('COUNT(enrolment.enrolments.id) as student_count')
+            )
+            ->groupBy(
+                'auth.instructor_profiles.name',
+                'course_catalogue.subjects.name',
+                'class_scheduling.classes.class_code',
+                'class_scheduling.centres.name',
+                'class_scheduling.classes.start_date',
+                'class_scheduling.classes.end_date',
+                'class_scheduling.classes.schedule_day',
+                'class_scheduling.classes.start_time',
+                'class_scheduling.classes.end_time'
             )
             ->orderBy('auth.instructor_profiles.name');
 
@@ -673,15 +716,25 @@ class ReportService
             ->join('course_catalogue.subjects', 'course_catalogue.courses.subject_id', '=', 'course_catalogue.subjects.id')
             ->join('class_scheduling.centres', 'class_scheduling.classes.centre_id', '=', 'class_scheduling.centres.id')
             ->join('auth.instructor_profiles', 'class_scheduling.classes.instructor_id', '=', 'auth.instructor_profiles.id')
+            ->leftJoin('class_scheduling.class_sessions', 'class_scheduling.classes.id', '=', 'class_scheduling.class_sessions.class_id')
             ->select(
-                'auth.instructor_profiles.name as instructor',
+                'auth.instructor_profiles.name as instructor_name',
                 'auth.instructor_profiles.phone',
                 'auth.instructor_profiles.email',
-                'course_catalogue.subjects.name as subject',
+                'course_catalogue.subjects.name as course',
                 'class_scheduling.classes.class_code',
                 'class_scheduling.centres.name as centre',
                 'class_scheduling.classes.start_date',
-                'class_scheduling.classes.end_date'
+                DB::raw('COUNT(class_scheduling.class_sessions.id) as sessions')
+            )
+            ->groupBy(
+                'auth.instructor_profiles.name',
+                'auth.instructor_profiles.phone',
+                'auth.instructor_profiles.email',
+                'course_catalogue.subjects.name',
+                'class_scheduling.classes.class_code',
+                'class_scheduling.centres.name',
+                'class_scheduling.classes.start_date'
             )
             ->orderBy('class_scheduling.classes.start_date');
 
@@ -825,6 +878,11 @@ class ReportService
             $query->where('instructor_finance.instructor_fee_items.instructor_id', $params['instructor_id']);
         }
 
+        if (!empty($params['month'])) {
+            $query->whereYear('instructor_finance.instructor_fee_items.calculated_at', substr($params['month'], 0, 4));
+            $query->whereMonth('instructor_finance.instructor_fee_items.calculated_at', substr($params['month'], 5, 2));
+        }
+
         return $query->get();
     }
 
@@ -832,17 +890,57 @@ class ReportService
     {
         $query = DB::table('instructor_finance.cheque_records')
             ->join('instructor_finance.instructor_payment_batches', 'instructor_finance.cheque_records.payment_batch_id', '=', 'instructor_finance.instructor_payment_batches.id')
+            ->join('auth.instructor_profiles', 'instructor_finance.instructor_payment_batches.instructor_id', '=', 'auth.instructor_profiles.id')
             ->select(
+                'auth.instructor_profiles.name as instructor_name',
                 'instructor_finance.cheque_records.cheque_no',
-                'instructor_finance.cheque_records.payee',
                 'instructor_finance.cheque_records.amount',
-                'instructor_finance.cheque_records.status',
-                'instructor_finance.cheque_records.printed_at',
                 'instructor_finance.instructor_payment_batches.payment_date'
             )
             ->orderByDesc('instructor_finance.cheque_records.created_at');
 
-        return $query->get();
+        if (!empty($params['instructor_id'])) {
+            $query->where('instructor_finance.instructor_payment_batches.instructor_id', $params['instructor_id']);
+        }
+
+        if (!empty($params['month'])) {
+            $query->whereYear('instructor_finance.cheque_records.printed_at', substr($params['month'], 0, 4));
+            $query->whereMonth('instructor_finance.cheque_records.printed_at', substr($params['month'], 5, 2));
+        }
+
+        $cheque = $query->first();
+
+        if (!$cheque) {
+            return collect();
+        }
+
+        $courses = DB::table('instructor_finance.instructor_fee_items')
+            ->join('class_scheduling.classes', 'instructor_finance.instructor_fee_items.class_id', '=', 'class_scheduling.classes.id')
+            ->join('course_catalogue.courses', 'class_scheduling.classes.course_id', '=', 'course_catalogue.courses.id')
+            ->join('course_catalogue.subjects', 'course_catalogue.courses.subject_id', '=', 'course_catalogue.subjects.id')
+            ->where('instructor_finance.instructor_fee_items.instructor_id', $params['instructor_id'] ?? 0)
+            ->select(
+                'course_catalogue.subjects.name as course_name',
+                'class_scheduling.classes.class_code',
+                'instructor_finance.instructor_fee_items.amount as fee'
+            )
+            ->get()
+            ->map(fn ($r) => (array) $r)
+            ->toArray();
+
+        $month = $params['month'] ?? now()->format('Y-m');
+        $period = date('M Y', strtotime($month . '-01'));
+
+        $result = [
+            'instructor_name' => $cheque->instructor_name,
+            'cheque_no' => $cheque->cheque_no,
+            'amount' => $cheque->amount,
+            'period' => $period,
+            'payment_date' => $cheque->payment_date,
+            'courses' => $courses,
+        ];
+
+        return collect([$result]);
     }
 
     private function queryInstructorFeeSummary(array $params): Collection
@@ -959,6 +1057,30 @@ class ReportService
             'certificate_application' => $this->pdfService->generateCertificateApplication(
                 $this->buildAttendanceMeta($params),
                 $rows
+            ),
+            'certificate_print' => $this->pdfService->generateCertificatePrint(
+                $this->buildAttendanceMeta($params),
+                $rows
+            ),
+            'instructor_contract' => $this->pdfService->generateInstructorContract(
+                $this->buildAttendanceMeta($params),
+                $rows[0] ?? []
+            ),
+            'advanced_course_notice' => $this->pdfService->generateAdvancedCourseNotice(
+                $this->buildAttendanceMeta($params),
+                $rows[0] ?? []
+            ),
+            'advanced_instructor_notice' => $this->pdfService->generateAdvancedInstructorNotice(
+                $this->buildAttendanceMeta($params),
+                $rows[0] ?? []
+            ),
+            'instructor_communication' => $this->pdfService->generateInstructorCommunication(
+                $this->buildAttendanceMeta($params),
+                $rows
+            ),
+            'instructor_cheque' => $this->pdfService->generateInstructorCheque(
+                $this->buildAttendanceMeta($params),
+                $rows[0] ?? []
             ),
             default => '',
         };

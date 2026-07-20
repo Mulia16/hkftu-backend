@@ -35,7 +35,7 @@ class CourseController extends Controller
 
         $courses = $query->paginate($request->integer('per_page', 12));
 
-        return response()->json(['data' => $courses]);
+        return response()->json($query->paginate($request->integer('per_page', 12)));
     }
 
     public function detail(string $courseCode): JsonResponse

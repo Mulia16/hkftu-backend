@@ -56,6 +56,6 @@ class ReceiptController extends Controller
             ->orderByDesc('issued_at')
             ->paginate($request->integer('per_page', 15));
 
-        return response()->json(['data' => $receipts]);
+        return response()->json($receipts);
     }
 }

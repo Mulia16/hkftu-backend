@@ -23,7 +23,7 @@ class SubjectController extends Controller
 
         $subjects = $query->orderBy('subject_code')->paginate(25);
 
-        return response()->json(['data' => $subjects]);
+        return response()->json($subjects);
     }
 
     public function show(Subject $subject): JsonResponse

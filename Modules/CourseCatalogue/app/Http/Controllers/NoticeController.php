@@ -27,10 +27,9 @@ class NoticeController extends Controller
 
     public function adminIndex(Request $request): JsonResponse
     {
-        $notices = Notice::orderByDesc('created_at')
-            ->paginate($request->integer('per_page', 25));
-
-        return response()->json(['data' => $notices]);
+        return response()->json(
+            Notice::orderByDesc('created_at')->paginate($request->integer('per_page', 25))
+        );
     }
 
     public function store(StoreNoticeData $data): JsonResponse

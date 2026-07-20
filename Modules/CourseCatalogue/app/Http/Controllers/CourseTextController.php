@@ -62,9 +62,33 @@ class CourseTextController extends Controller
         ]);
 
         $target = CourseTextStatus::from($data['status']);
+        $user = $request->user();
+        $roles = $user->roles->pluck('name')->toArray();
+        $currentStatus = $version->status->value;
+
+        $isPlanner = in_array('course_planner', $roles) || in_array('system_admin', $roles);
+        $isManager = in_array('centre_manager', $roles) || in_array('system_admin', $roles);
+
+        $allowed = match (true) {
+            $currentStatus === 'draft' && $target === CourseTextStatus::Review => $isPlanner,
+            $currentStatus === 'review' && $target === CourseTextStatus::Draft => $isPlanner,
+            $currentStatus === 'review' && $target === CourseTextStatus::Approved => $isManager,
+            $currentStatus === 'approved' && $target === CourseTextStatus::Review => $isManager,
+            $currentStatus === 'approved' && $target === CourseTextStatus::Published => $isManager,
+            default => false,
+        };
+
+        if (!$allowed) {
+            return response()->json([
+                'error' => [
+                    'code' => 'FORBIDDEN_TRANSITION',
+                    'message' => "Your role cannot change status from '{$currentStatus}' to '{$target->value}'.",
+                ],
+            ], 403);
+        }
 
         try {
-            $version = $this->courseTextService->transition($version, $target, $request->user()->id);
+            $version = $this->courseTextService->transition($version, $target, $user->id);
         } catch (\DomainException $e) {
             return response()->json([
                 'error' => [
