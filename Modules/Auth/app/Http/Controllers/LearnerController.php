@@ -32,7 +32,7 @@ class LearnerController extends Controller
             ->when($centreId, fn ($q) => $q->where('centre_id', $centreId))
             ->orderByDesc('created_at');
 
-        return response()->json(['data' => $query->paginate($request->integer('per_page', 25))]);
+        return response()->json($query->paginate($request->integer('per_page', 25)));
     }
 
     public function show(int $id): JsonResponse

@@ -16,6 +16,6 @@ class AuditLogController extends Controller
             ->when($request->resource_type, fn ($q) => $q->where('resource_type', $request->resource_type))
             ->orderByDesc('created_at');
 
-        return response()->json(['data' => $query->paginate($request->integer('per_page', 25))]);
+        return response()->json($query->paginate($request->integer('per_page', 25)));
     }
 }

@@ -45,7 +45,7 @@ class JobController extends Controller
         return response()->json(['message' => 'Job not found'], 404);
     }
 
-    public function download(int $id): JsonResponse
+    public function download(int $id)
     {
         $run = ReportRun::find($id);
 
@@ -58,10 +58,7 @@ class JobController extends Controller
                 return response()->json(['message' => 'File not found'], 404);
             }
 
-            return response()->json(['data' => [
-                'download_url' => '/storage/' . $run->file_path,
-                'filename' => basename($run->file_path),
-            ]]);
+            return Storage::disk('public')->download($run->file_path, basename($run->file_path));
         }
 
         $job = ExportJob::find($id);
@@ -75,10 +72,7 @@ class JobController extends Controller
                 return response()->json(['message' => 'File not found'], 404);
             }
 
-            return response()->json(['data' => [
-                'download_url' => '/storage/' . $job->file_path,
-                'filename' => basename($job->file_path),
-            ]]);
+            return Storage::disk('public')->download($job->file_path, basename($job->file_path));
         }
 
         return response()->json(['message' => 'Job not found'], 404);
