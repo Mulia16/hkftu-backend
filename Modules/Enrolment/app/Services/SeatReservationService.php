@@ -56,7 +56,7 @@ class SeatReservationService
     public function calculateAvailableSeats(CourseClass $class): int
     {
         $confirmedCount = Enrolment::where('class_id', $class->id)
-            ->whereIn('status', ['confirmed', 'pending'])
+            ->whereIn('status', ['confirmed', 'completed'])
             ->count();
 
         $activeReservedCount = SeatReservation::where('class_id', $class->id)

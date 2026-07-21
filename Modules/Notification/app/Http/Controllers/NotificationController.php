@@ -59,6 +59,10 @@ class NotificationController extends Controller
     {
         $query = SupportTicket::with(['user', 'responder']);
 
+        if (! $request->user()->hasAnyRole(['system_admin', 'centre_manager', 'counter_staff'])) {
+            $query->where('user_id', $request->user()->id);
+        }
+
         if ($status = $request->input('status')) {
             $query->where('status', $status);
         }

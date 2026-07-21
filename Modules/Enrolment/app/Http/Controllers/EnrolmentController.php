@@ -4,6 +4,7 @@ namespace Modules\Enrolment\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Support\ApiError;
+use App\Support\Ownership;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Modules\Auth\Models\LearnerProfile;
@@ -38,6 +39,18 @@ class EnrolmentController extends Controller
 
     public function store(StoreEnrolmentData $data, Request $request): JsonResponse
     {
+        $user = $request->user();
+
+        if (! Ownership::isStaff($user)) {
+            if (! in_array($data->channel, ['online_member', 'online_public'], true)) {
+                return Ownership::forbidden('Only staff can create manual or counter enrolments.');
+            }
+
+            if (! Ownership::ownsLearner($user, $data->learner_id)) {
+                return Ownership::forbidden('You can only enrol a learner profile you own.');
+            }
+        }
+
         $class = CourseClass::findOrFail($data->class_id);
         $learner = LearnerProfile::findOrFail($data->learner_id);
 
@@ -72,9 +85,13 @@ class EnrolmentController extends Controller
         return response()->json(['data' => $enrolment->load(['courseClass.course.subject', 'learner'])], 201);
     }
 
-    public function show(int $id): JsonResponse
+    public function show(Request $request, int $id): JsonResponse
     {
         $enrolment = Enrolment::with(['courseClass.course.subject', 'learner', 'reservation', 'creator'])->findOrFail($id);
+
+        if (! Ownership::canAccessLearner($request->user(), $enrolment->learner_id)) {
+            return Ownership::forbidden();
+        }
 
         return response()->json(['data' => $enrolment]);
     }
@@ -90,6 +107,10 @@ class EnrolmentController extends Controller
         $before = $enrolment->toArray();
         $enrolment->update(['status' => 'confirmed']);
 
+        $enrolment->reservation()
+            ->where('status', 'active')
+            ->update(['status' => 'converted']);
+
         $this->auditLogger->record('enrolment.confirm', 'enrolment', $id, before: $before, after: $enrolment->toArray());
 
         return response()->json(['data' => $enrolment]);
@@ -98,6 +119,10 @@ class EnrolmentController extends Controller
     public function cancel(Request $request, int $id): JsonResponse
     {
         $enrolment = Enrolment::findOrFail($id);
+
+        if (! Ownership::canAccessLearner($request->user(), $enrolment->learner_id)) {
+            return Ownership::forbidden();
+        }
 
         if (! in_array($enrolment->status, ['pending', 'confirmed'])) {
             return ApiError::respond('INVALID_STATUS', 'Cannot cancel enrolment in current status.', 422);

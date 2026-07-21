@@ -3,9 +3,11 @@
 namespace Modules\Payment\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Support\Ownership;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Modules\Auth\Services\AuditLogger;
+use Modules\Enrolment\Models\Enrolment;
 use Modules\Payment\DTOs\StoreRefundData;
 use Modules\Payment\Models\Refund;
 use Modules\Payment\Services\RefundService;
@@ -19,6 +21,13 @@ class RefundController extends Controller
 
     public function store(StoreRefundData $data, Request $request): JsonResponse
     {
+        if (! Ownership::isStaff($request->user())) {
+            $enrolment = Enrolment::find($data->enrolment_id);
+            if (! $enrolment || ! Ownership::ownsLearner($request->user(), $enrolment->learner_id)) {
+                return Ownership::forbidden('You can only request a refund for your own enrolment.');
+            }
+        }
+
         $refund = $this->refundService->request(
             $data->enrolment_id,
             $data->amount,
@@ -67,9 +76,13 @@ class RefundController extends Controller
         return response()->json($refunds);
     }
 
-    public function show(int $id): JsonResponse
+    public function show(Request $request, int $id): JsonResponse
     {
         $refund = Refund::with(['enrolment.learner', 'enrolment.courseClass.course.subject', 'paymentIntent', 'requester', 'approver'])->findOrFail($id);
+
+        if (! Ownership::canAccessLearner($request->user(), $refund->enrolment?->learner_id)) {
+            return Ownership::forbidden();
+        }
 
         return response()->json(['data' => $refund]);
     }

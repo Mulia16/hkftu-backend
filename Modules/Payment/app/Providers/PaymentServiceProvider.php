@@ -3,7 +3,7 @@
 namespace Modules\Payment\Providers;
 
 use Illuminate\Console\Scheduling\Schedule;
-use Modules\Payment\Jobs\ReleaseExpiredPaymentIntents;
+use Modules\Payment\Jobs\ReconcilePendingPaymentIntents;
 use Nwidart\Modules\Support\ModuleServiceProvider;
 
 class PaymentServiceProvider extends ModuleServiceProvider
@@ -42,6 +42,6 @@ class PaymentServiceProvider extends ModuleServiceProvider
      */
     protected function configureSchedules(Schedule $schedule): void
     {
-        $schedule->job(new ReleaseExpiredPaymentIntents)->everyMinute();
+        $schedule->job(new ReconcilePendingPaymentIntents)->everyMinute();
     }
 }

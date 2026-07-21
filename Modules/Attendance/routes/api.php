@@ -11,10 +11,11 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::post('attendance/sessions/{sessionId}/submit', [AttendanceController::class, 'submit'])
         ->middleware('role:system_admin,centre_manager,counter_staff,instructor');
 
+    Route::get('attendance/learner-history', [AttendanceController::class, 'learnerHistory']);
+
     Route::get('attendance/{id}', [AttendanceController::class, 'show'])
         ->middleware('role:system_admin,centre_manager,counter_staff,instructor');
     Route::put('attendance/{id}', [AttendanceController::class, 'update'])
         ->middleware('role:system_admin,centre_manager,counter_staff,instructor');
 
-    Route::get('attendance/learner-history', [AttendanceController::class, 'learnerHistory']);
 });

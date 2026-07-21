@@ -3,10 +3,12 @@
 namespace Modules\Enrolment\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Support\Ownership;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Modules\Auth\Services\AuditLogger;
 use Modules\Enrolment\DTOs\StoreTransferData;
+use Modules\Enrolment\Models\Enrolment;
 use Modules\Enrolment\Models\Transfer;
 use Modules\Enrolment\Services\TransferService;
 
@@ -19,6 +21,13 @@ class TransferController extends Controller
 
     public function store(StoreTransferData $data, Request $request): JsonResponse
     {
+        if (! Ownership::isStaff($request->user())) {
+            $enrolment = Enrolment::find($data->enrolment_id);
+            if (! $enrolment || ! Ownership::ownsLearner($request->user(), $enrolment->learner_id)) {
+                return Ownership::forbidden('You can only request a transfer for your own enrolment.');
+            }
+        }
+
         $transfer = $this->transferService->request(
             $data->enrolment_id,
             $data->new_class_id,
@@ -58,9 +67,13 @@ class TransferController extends Controller
         return response()->json($transfers);
     }
 
-    public function show(int $id): JsonResponse
+    public function show(Request $request, int $id): JsonResponse
     {
         $transfer = Transfer::with(['oldEnrolment.learner', 'oldEnrolment.courseClass.course.subject', 'newEnrolment', 'newClass.course.subject', 'requester', 'approver'])->findOrFail($id);
+
+        if (! Ownership::canAccessLearner($request->user(), $transfer->oldEnrolment?->learner_id)) {
+            return Ownership::forbidden();
+        }
 
         return response()->json(['data' => $transfer]);
     }

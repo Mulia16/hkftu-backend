@@ -5,19 +5,36 @@ namespace Modules\Payment\Services;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Modules\Enrolment\Models\Enrolment;
+use Modules\Enrolment\Models\SeatReservation;
 use Modules\Payment\DTOs\ManualUploadData;
 use Modules\Payment\DTOs\StorePaymentIntentData;
 use Modules\Payment\Models\PaymentIntent;
 use Modules\Payment\Models\PaymentTransaction;
+use Modules\Payment\Models\Receipt;
 
 class PaymentService
 {
     public function __construct(
         private ReceiptPdfService $receiptPdfService,
     ) {}
+
     public function createIntent(StorePaymentIntentData $data, ?int $createdBy = null): PaymentIntent
     {
-        $enrolment = Enrolment::findOrFail($data->enrolment_id);
+        if ($data->reservation_id) {
+            $reservation = SeatReservation::findOrFail($data->reservation_id);
+            $enrolment = $this->ensureEnrolmentForReservation($reservation);
+        } else {
+            $enrolment = Enrolment::findOrFail($data->enrolment_id);
+        }
+
+        $existingPending = PaymentIntent::where('enrolment_id', $enrolment->id)
+            ->where('status', 'pending')
+            ->latest('id')
+            ->first();
+
+        if ($existingPending) {
+            return $existingPending;
+        }
 
         return PaymentIntent::create([
             'enrolment_id' => $enrolment->id,
@@ -28,6 +45,25 @@ class PaymentService
             'gateway' => $data->method === 'razerms' ? 'razerms' : null,
             'expires_at' => $data->method === 'razerms' ? now()->addMinutes(30) : null,
         ]);
+    }
+
+    public function ensureEnrolmentForReservation(SeatReservation $reservation): Enrolment
+    {
+        return DB::transaction(fn () => Enrolment::firstOrCreate(
+            ['reservation_id' => $reservation->id],
+            [
+                'class_id' => $reservation->class_id,
+                'learner_id' => $reservation->learner_id,
+                'status' => 'pending',
+                'channel' => $reservation->channel ?: 'online_public',
+                'price_snapshot_json' => $reservation->amount_snapshot_json,
+                'member_snapshot_json' => [
+                    'membership_status' => $reservation->learner?->membership_status,
+                    'membership_no' => $reservation->learner?->membership_no,
+                ],
+                'created_by' => null,
+            ],
+        ));
     }
 
     public function uploadProof(ManualUploadData $data, int $userId): PaymentTransaction
@@ -77,6 +113,10 @@ class PaymentService
             if ($enrolment && $enrolment->status !== 'confirmed') {
                 $enrolment->update(['status' => 'confirmed']);
             }
+
+            $enrolment?->reservation()
+                ->where('status', 'active')
+                ->update(['status' => 'converted']);
 
             $receiptNo = ReceiptService::generateReceiptNumber();
 
@@ -152,6 +192,12 @@ class PaymentService
     public function confirmGatewayPayment(PaymentIntent $intent, string $gatewayTxnId): void
     {
         DB::transaction(function () use ($intent, $gatewayTxnId) {
+            $intent = PaymentIntent::whereKey($intent->id)->lockForUpdate()->firstOrFail();
+
+            if ($intent->receipt()->exists()) {
+                return;
+            }
+
             $intent->update(['status' => 'paid']);
 
             PaymentTransaction::create([
@@ -167,6 +213,14 @@ class PaymentService
                 $enrolment->update(['status' => 'confirmed']);
             }
 
+            $enrolment?->reservation()
+                ->where('status', 'active')
+                ->update(['status' => 'converted']);
+
+            if ($enrolment && Receipt::where('enrolment_id', $enrolment->id)->exists()) {
+                return;
+            }
+
             $receiptNo = ReceiptService::generateReceiptNumber();
 
             $receipt = $intent->receipt()->create([
@@ -178,6 +232,27 @@ class PaymentService
             ]);
 
             $this->receiptPdfService->generate($receipt);
+        });
+    }
+
+    public function releaseHungIntent(PaymentIntent $intent): void
+    {
+        DB::transaction(function () use ($intent) {
+            $intent = PaymentIntent::whereKey($intent->id)->lockForUpdate()->firstOrFail();
+
+            if ($intent->status !== 'pending') {
+                return;
+            }
+
+            $intent->update(['status' => 'expired']);
+
+            $enrolment = $intent->enrolment;
+            if ($enrolment && $enrolment->status === 'pending') {
+                $enrolment->update(['status' => 'cancelled']);
+                $enrolment->reservation()
+                    ->where('status', 'active')
+                    ->update(['status' => 'expired']);
+            }
         });
     }
 }

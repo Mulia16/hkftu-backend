@@ -33,8 +33,6 @@ class CourseController extends Controller
             ->when($request->centre_id, fn ($q) => $q->whereHas('classes', fn ($q) => $q->where('centre_id', $request->centre_id)->where('status', 'published')))
             ->orderBy('course_code');
 
-        $courses = $query->paginate($request->integer('per_page', 12));
-
         return response()->json($query->paginate($request->integer('per_page', 12)));
     }
 

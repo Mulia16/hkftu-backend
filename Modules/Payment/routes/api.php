@@ -67,5 +67,6 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
 
 Route::prefix('v1')->group(function () {
     Route::get('payments/gateway/return', [PaymentController::class, 'handleGatewayReturn']);
-    Route::post('payments/gateway/callback', [PaymentController::class, 'handleGatewayReturn']);
+    Route::post('payments/gateway/return', [PaymentController::class, 'handleGatewayReturn']);
+    Route::post('payments/gateway/callback', [PaymentController::class, 'handleGatewayCallback']);
 });

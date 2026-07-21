@@ -82,13 +82,8 @@ class ReportPdfService
         $pdf = Pdf::loadHTML($html)->setPaper($paper, $orientation);
 
         $filename = 'reports/' . $prefix . '_' . now()->format('YmdHis') . '.pdf';
-        $path = storage_path('app/public/' . $filename);
 
-        if (!is_dir(dirname($path))) {
-            mkdir(dirname($path), 0755, true);
-        }
-
-        file_put_contents($path, $pdf->output());
+        Storage::disk('local')->put($filename, $pdf->output());
 
         return $filename;
     }

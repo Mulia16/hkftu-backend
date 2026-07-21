@@ -5,6 +5,7 @@ namespace Modules\Certificate\Services;
 use Illuminate\Support\Facades\DB;
 use Modules\Attendance\Models\AttendancePolicy;
 use Modules\Attendance\Models\AttendanceRecord;
+use Modules\ClassScheduling\Models\CourseClass;
 use Modules\Enrolment\Models\Enrolment;
 
 class CertificateEligibilityService
@@ -82,8 +83,21 @@ class CertificateEligibilityService
 
     private function getPolicy(int $classId): ?AttendancePolicy
     {
-        return AttendancePolicy::where('is_active', true)
+        $subject = CourseClass::with('course.subject')->find($classId)?->course?->subject;
+        $courseType = $subject?->certificate_eligible ? 'certificate' : null;
+
+        $active = AttendancePolicy::where('is_active', true);
+
+        $policy = (clone $active)
+            ->when(
+                $courseType,
+                fn ($q) => $q->where('course_type', $courseType),
+                fn ($q) => $q->whereNull('course_type'),
+            )
+            ->orderByDesc('effective_from')
             ->orderByDesc('id')
             ->first();
+
+        return $policy ?? $active->whereNull('course_type')->orderByDesc('id')->first();
     }
 }

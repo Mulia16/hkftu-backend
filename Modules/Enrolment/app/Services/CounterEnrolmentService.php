@@ -29,7 +29,7 @@ class CounterEnrolmentService
         }
 
         return DB::transaction(function () use ($data, $learner, $class, $staffId, $eligibility) {
-            $this->seatService->reserve($class, $learner->id, 'counter');
+            $reservation = $this->seatService->reserve($class, $learner->id, 'counter');
 
             $pricing = $eligibility['pricing'];
             $total = $pricing['total'];
@@ -37,6 +37,7 @@ class CounterEnrolmentService
             $enrolment = Enrolment::create([
                 'class_id' => $data->class_id,
                 'learner_id' => $data->learner_id,
+                'reservation_id' => $reservation->id,
                 'status' => 'confirmed',
                 'channel' => 'counter',
                 'price_snapshot_json' => $pricing,
@@ -45,6 +46,8 @@ class CounterEnrolmentService
                 ],
                 'created_by' => $staffId,
             ]);
+
+            $reservation->update(['status' => 'converted']);
 
             $intent = PaymentIntent::create([
                 'enrolment_id' => $enrolment->id,

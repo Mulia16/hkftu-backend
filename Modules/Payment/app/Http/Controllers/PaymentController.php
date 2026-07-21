@@ -4,9 +4,11 @@ namespace Modules\Payment\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Support\ApiError;
+use App\Support\Ownership;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Modules\Auth\Services\AuditLogger;
+use Modules\Enrolment\Models\Enrolment;
 use Modules\Enrolment\Models\SeatReservation;
 use Modules\Payment\DTOs\ManualUploadData;
 use Modules\Payment\DTOs\StorePaymentIntentData;
@@ -28,11 +30,17 @@ class PaymentController extends Controller
         $reservation = SeatReservation::findOrFail($request->input('reservation_id'));
         $user = $request->user();
 
+        if (! Ownership::canAccessLearner($user, $reservation->learner_id)) {
+            return Ownership::forbidden();
+        }
+
+        $enrolment = $this->paymentService->ensureEnrolmentForReservation($reservation);
+
         $orderId = 'HKFTU-'.time().'-'.$reservation->id;
 
         $intent = PaymentIntent::create([
-            'enrolment_id' => $reservation->enrolment_id ?? $reservation->id,
-            'amount' => $reservation->amount_snapshot_json['total'] ?? 0,
+            'enrolment_id' => $enrolment->id,
+            'amount' => $enrolment->price_snapshot_json['total'] ?? 0,
             'currency' => 'HKD',
             'method' => 'razerms',
             'status' => 'pending',
@@ -65,6 +73,14 @@ class PaymentController extends Controller
 
     public function createIntent(StorePaymentIntentData $data, Request $request): JsonResponse
     {
+        $ownerLearnerId = $data->reservation_id
+            ? SeatReservation::find($data->reservation_id)?->learner_id
+            : Enrolment::find($data->enrolment_id)?->learner_id;
+
+        if (! Ownership::canAccessLearner($request->user(), $ownerLearnerId)) {
+            return Ownership::forbidden();
+        }
+
         $intent = $this->paymentService->createIntent($data, $request->user()?->id);
 
         $this->auditLogger->record('payment.intent.create', 'payment_intent', $intent->id, after: $intent->toArray());
@@ -72,9 +88,13 @@ class PaymentController extends Controller
         return response()->json(['data' => $intent], 201);
     }
 
-    public function showIntent(int $id): JsonResponse
+    public function showIntent(Request $request, int $id): JsonResponse
     {
         $intent = PaymentIntent::with(['enrolment.courseClass.course.subject', 'transactions', 'receipt'])->findOrFail($id);
+
+        if (! Ownership::canAccessLearner($request->user(), $intent->enrolment?->learner_id)) {
+            return Ownership::forbidden();
+        }
 
         return response()->json(['data' => $intent]);
     }
@@ -128,7 +148,7 @@ class PaymentController extends Controller
         return response()->json($payments);
     }
 
-    public function handleGatewayReturn(Request $request): JsonResponse
+    public function handleGatewayCallback(Request $request): JsonResponse
     {
         $intent = PaymentIntent::where('gateway_intent_id', $request->input('orderid'))
             ->firstOrFail();
@@ -177,5 +197,22 @@ class PaymentController extends Controller
         $this->paymentService->confirmGatewayPayment($intent, $request->input('tranID'));
 
         return response()->json(['data' => $intent->fresh(['enrolment', 'receipt'])]);
+    }
+
+    public function handleGatewayReturn(Request $request): JsonResponse
+    {
+        $intent = PaymentIntent::with('receipt')
+            ->where('gateway_intent_id', $request->input('orderid'))
+            ->first();
+
+        if (! $intent) {
+            return ApiError::respond('INTENT_NOT_FOUND', 'Payment intent not found.', 404);
+        }
+
+        return response()->json(['data' => [
+            'status' => $intent->status,
+            'paid' => $intent->status === 'paid',
+            'receipt' => $intent->receipt,
+        ]]);
     }
 }

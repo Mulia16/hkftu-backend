@@ -3,10 +3,14 @@
 namespace Modules\Certificate\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Support\ApiError;
+use App\Support\Ownership;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Modules\Auth\Services\AuditLogger;
 use Modules\Certificate\Models\Certificate;
+use Modules\Certificate\Models\CertificateReprintRequest;
 use Modules\Certificate\Models\CertificateTemplate;
 use Modules\Certificate\Services\CertificateEligibilityService;
 use Modules\Certificate\Services\CertificatePdfService;
@@ -86,7 +90,7 @@ class CertificateController extends Controller
     {
         $cert = Certificate::findOrFail($id);
 
-        if (! $cert->pdf_file_path) {
+        if (! $this->pdfService->getPath($cert)) {
             $this->pdfService->generate($cert);
             $cert->refresh();
         }
@@ -97,7 +101,10 @@ class CertificateController extends Controller
             return ApiError::respond('PDF_NOT_FOUND', 'PDF file not found on disk.', 404);
         }
 
-        return response()->json(['data' => ['pdf_path' => $cert->pdf_file_path, 'download_url' => '/storage/'.$cert->pdf_file_path]]);
+        return response()->json(['data' => [
+            'pdf_path' => $cert->pdf_file_path,
+            'download_url' => Storage::disk('local')->temporaryUrl($cert->pdf_file_path, now()->addMinutes(15)),
+        ]]);
     }
 
     public function myCertificates(Request $request): JsonResponse
@@ -124,7 +131,7 @@ class CertificateController extends Controller
                 continue;
             }
 
-            if (! $cert->pdf_file_path) {
+            if (! $this->pdfService->getPath($cert)) {
                 $this->pdfService->generate($cert);
                 $cert->refresh();
             }
@@ -133,7 +140,7 @@ class CertificateController extends Controller
                 'id' => $cert->id,
                 'certificate_no' => $cert->certificate_no,
                 'pdf_path' => $cert->pdf_file_path,
-                'download_url' => '/storage/'.$cert->pdf_file_path,
+                'download_url' => Storage::disk('local')->temporaryUrl($cert->pdf_file_path, now()->addMinutes(15)),
             ];
         }
 
@@ -144,16 +151,22 @@ class CertificateController extends Controller
     {
         $request->validate(['reason' => ['required', 'string', 'max:500']]);
 
-        $cert = Certificate::findOrFail($id);
+        $cert = Certificate::with('enrolment')->findOrFail($id);
 
-        $cert->update([
-            'reprint_reason' => $request->input('reason'),
-            'reprinted_by' => $request->user()->id,
-            'reprinted_at' => now(),
+        if (! Ownership::canAccessLearner($request->user(), $cert->enrolment?->learner_id)) {
+            return Ownership::forbidden();
+        }
+
+        $reprintRequest = CertificateReprintRequest::create([
+            'certificate_id' => $cert->id,
+            'requested_by' => $request->user()->id,
+            'reason' => $request->input('reason'),
+            'status' => 'pending',
+            'requested_at' => now(),
         ]);
 
-        $this->auditLogger->record('certificate.reprint_request', 'certificate', $id, after: $cert->toArray());
+        $this->auditLogger->record('certificate.reprint_request', 'certificate', $id, after: $reprintRequest->toArray());
 
-        return response()->json(['data' => $cert]);
+        return response()->json(['data' => $reprintRequest], 201);
     }
 }

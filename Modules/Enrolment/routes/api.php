@@ -16,7 +16,8 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
         ->middleware('role:system_admin,centre_manager,counter_staff');
     Route::post('enrolments', [EnrolmentController::class, 'store']);
     Route::get('enrolments/{id}', [EnrolmentController::class, 'show']);
-    Route::post('enrolments/{id}/confirm', [EnrolmentController::class, 'confirm']);
+    Route::post('enrolments/{id}/confirm', [EnrolmentController::class, 'confirm'])
+        ->middleware('role:system_admin,centre_manager,counter_staff');
     Route::post('enrolments/{id}/cancel', [EnrolmentController::class, 'cancel']);
 
     Route::post('counter/enrolments', [CounterEnrolmentController::class, 'store'])

@@ -4,6 +4,7 @@ namespace Modules\Enrolment\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Support\ApiError;
+use App\Support\Ownership;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Modules\Auth\Models\LearnerProfile;
@@ -25,6 +26,10 @@ class SeatReservationController extends Controller
 
     public function store(StoreSeatReservationData $data, Request $request): JsonResponse
     {
+        if (! Ownership::canAccessLearner($request->user(), $data->learner_id)) {
+            return Ownership::forbidden('You can only reserve a seat for a learner profile you own.');
+        }
+
         $class = CourseClass::findOrFail($data->class_id);
         $learner = LearnerProfile::findOrFail($data->learner_id);
 
@@ -67,17 +72,31 @@ class SeatReservationController extends Controller
         ], 201);
     }
 
-    public function show(int $id): JsonResponse
+    public function show(Request $request, int $id): JsonResponse
     {
         $reservation = SeatReservation::with(['courseClass.course.subject', 'learner'])->findOrFail($id);
+
+        if (! Ownership::canAccessLearner($request->user(), $reservation->learner_id)) {
+            return Ownership::forbidden();
+        }
 
         return response()->json(['data' => $reservation]);
     }
 
-    public function cancel(CancelSeatReservationData $data, int $id): JsonResponse
+    public function cancel(CancelSeatReservationData $data, Request $request, int $id): JsonResponse
     {
+        $reservation = SeatReservation::find($id);
+
+        if (! $reservation) {
+            return ApiError::respond('NOT_FOUND', 'Reservation not found.', 404);
+        }
+
+        if (! Ownership::canAccessLearner($request->user(), $reservation->learner_id)) {
+            return Ownership::forbidden();
+        }
+
         try {
-            $reservation = $this->reservationService->cancel($id, $data->learner_id);
+            $reservation = $this->reservationService->cancel($id, $reservation->learner_id);
         } catch (\Exception $e) {
             return ApiError::respond('CANCEL_FAILED', 'Cannot cancel reservation.', 422);
         }

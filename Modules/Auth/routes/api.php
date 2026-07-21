@@ -39,6 +39,7 @@ Route::prefix('v1')->group(function () {
 
         Route::get('dependents', [LearnerController::class, 'myDependents']);
         Route::post('dependents', [LearnerController::class, 'storeDependent']);
+        Route::delete('dependents/{id}', [LearnerController::class, 'destroyDependent']);
 
         Route::post('auth/mfa/enable', [MfaController::class, 'enable']);
         Route::post('auth/mfa/verify', [MfaController::class, 'verify']);

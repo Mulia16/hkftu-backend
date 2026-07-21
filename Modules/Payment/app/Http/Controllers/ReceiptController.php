@@ -3,6 +3,7 @@
 namespace Modules\Payment\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Support\Ownership;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Modules\Payment\Models\Receipt;
@@ -15,7 +16,7 @@ class ReceiptController extends Controller
         private ReceiptPdfService $pdfService,
     ) {}
 
-    public function show(string $receiptNo): JsonResponse
+    public function show(Request $request, string $receiptNo): JsonResponse
     {
         $receipt = Receipt::with([
             'enrolment.learner',
@@ -23,12 +24,20 @@ class ReceiptController extends Controller
             'paymentIntent',
         ])->where('receipt_no', $receiptNo)->firstOrFail();
 
+        if (! Ownership::canAccessLearner($request->user(), $receipt->enrolment?->learner_id)) {
+            return Ownership::forbidden();
+        }
+
         return response()->json(['data' => $receipt]);
     }
 
     public function download(Request $request, string $receiptNo): BinaryFileResponse
     {
-        $receipt = Receipt::where('receipt_no', $receiptNo)->firstOrFail();
+        $receipt = Receipt::with('enrolment')->where('receipt_no', $receiptNo)->firstOrFail();
+
+        if (! Ownership::canAccessLearner($request->user(), $receipt->enrolment?->learner_id)) {
+            abort(403, 'You do not have access to this resource.');
+        }
 
         $path = $this->pdfService->getPath($receipt);
 

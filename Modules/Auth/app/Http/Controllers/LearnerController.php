@@ -4,6 +4,7 @@ namespace Modules\Auth\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Support\ApiError;
+use App\Support\Ownership;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Modules\Auth\DTOs\StoreDependentData;
@@ -24,9 +25,13 @@ class LearnerController extends Controller
 
         $query = LearnerProfile::with('user')
             ->when($request->search, function ($q) use ($request) {
-                $q->where('name_en', 'ilike', "%{$request->search}%")
-                    ->orWhere('name_zh', 'ilike', "%{$request->search}%")
-                    ->orWhere('membership_no', 'ilike', "%{$request->search}%");
+                $q->where(function ($sub) use ($request) {
+                    $sub->where('name_en', 'ilike', "%{$request->search}%")
+                        ->orWhere('name_zh', 'ilike', "%{$request->search}%")
+                        ->orWhere('membership_no', 'ilike', "%{$request->search}%")
+                        ->orWhere('email', 'ilike', "%{$request->search}%")
+                        ->orWhere('phone', 'ilike', "%{$request->search}%");
+                });
             })
             ->when($request->membership_status, fn ($q) => $q->where('membership_status', $request->membership_status))
             ->when($centreId, fn ($q) => $q->where('centre_id', $centreId))
@@ -35,9 +40,13 @@ class LearnerController extends Controller
         return response()->json($query->paginate($request->integer('per_page', 25)));
     }
 
-    public function show(int $id): JsonResponse
+    public function show(Request $request, int $id): JsonResponse
     {
-        $profile = LearnerProfile::with(['user', 'dependents.learnerProfile', 'latestSnapshot'])->findOrFail($id);
+        $centreId = $request->user()->staffProfile?->centre_id;
+
+        $profile = LearnerProfile::with(['user', 'dependents.learnerProfile', 'latestSnapshot'])
+            ->when($centreId, fn ($q) => $q->where('centre_id', $centreId))
+            ->findOrFail($id);
 
         return response()->json(['data' => $profile]);
     }
@@ -76,9 +85,11 @@ class LearnerController extends Controller
     {
         $validated = $data->toArray();
 
-        $existing = LearnerProfile::where('user_id', $validated['user_id'])->first();
-        if ($existing) {
-            return ApiError::respond('DUPLICATE_PROFILE', 'Learner profile already exists for this user.', 409);
+        if (! empty($validated['user_id'])) {
+            $existing = LearnerProfile::where('user_id', $validated['user_id'])->first();
+            if ($existing) {
+                return ApiError::respond('DUPLICATE_PROFILE', 'Learner profile already exists for this user.', 409);
+            }
         }
 
         if (isset($validated['id_no'])) {
@@ -131,10 +142,28 @@ class LearnerController extends Controller
     public function storeDependent(StoreDependentData $data, Request $request): JsonResponse
     {
         $validated = $data->toArray();
+        $learnerProfileId = $validated['learner_profile_id'];
+
+        if ($learnerProfileId) {
+            $target = LearnerProfile::find($learnerProfileId);
+            if (! $target) {
+                return ApiError::respond('LEARNER_NOT_FOUND', 'Learner profile not found.', 404);
+            }
+            if ($target->user_id !== null) {
+                return Ownership::forbidden('Cannot attach a dependent to a learner profile that has its own account.');
+            }
+        } else {
+            $learnerProfile = LearnerProfile::create([
+                'name_en' => $validated['name_en'],
+                'name_zh' => $validated['name_zh'] ?? '',
+                'status' => 'active',
+            ]);
+            $learnerProfileId = $learnerProfile->id;
+        }
 
         $dependent = DependentProfile::create([
             'guardian_user_id' => $request->user()->id,
-            'learner_profile_id' => $validated['learner_profile_id'],
+            'learner_profile_id' => $learnerProfileId,
             'relationship' => $validated['relationship'] ?? 'parent',
             'consent_at' => now(),
         ]);
@@ -142,6 +171,17 @@ class LearnerController extends Controller
         $this->auditLogger->record('dependent.create', 'dependent_profile', $dependent->id);
 
         return response()->json(['data' => $dependent->load('learnerProfile')], 201);
+    }
+
+    public function destroyDependent(Request $request, int $id): JsonResponse
+    {
+        $dependent = DependentProfile::where('guardian_user_id', $request->user()->id)->findOrFail($id);
+
+        $dependent->delete();
+
+        $this->auditLogger->record('dependent.delete', 'dependent_profile', $id);
+
+        return response()->json(['message' => 'Dependent removed.']);
     }
 
     public function myDependents(Request $request): JsonResponse

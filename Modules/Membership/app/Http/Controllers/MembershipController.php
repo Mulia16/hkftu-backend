@@ -18,7 +18,7 @@ class MembershipController extends Controller
     public function verify(Request $request): JsonResponse
     {
         $request->validate([
-            'learner_profile_id' => 'required|exists:pgsql,auth.learner_profiles,id',
+            'learner_profile_id' => 'required|integer',
             'membership_no' => 'nullable|string|max:50',
         ]);
 
@@ -117,16 +117,30 @@ class MembershipController extends Controller
 
     private function updatePricingEligibility(LearnerProfile $profile, MemberVerification $verification, array $mockResult): void
     {
+        $memberType = $mockResult['member_type'] ?? 'ordinary';
+
         MemberPricingEligibility::updateOrCreate(
             ['learner_profile_id' => $profile->id, 'is_active' => true],
             [
                 'member_verification_id' => $verification->id,
-                'member_type' => $mockResult['member_type'] ?? 'ordinary',
+                'member_type' => $memberType,
                 'pricing_rule' => 'member_price',
-                'discount_percentage' => 0,
+                'discount_percentage' => $this->resolveMemberDiscountPercentage($memberType),
                 'is_active' => true,
                 'expires_at' => isset($mockResult['expiry_date']) ? $mockResult['expiry_date'] : null,
             ],
         );
+    }
+
+    private function resolveMemberDiscountPercentage(?string $memberType): float
+    {
+        $config = config('membership.member_discount_percentage', []);
+        $byType = $config['by_type'] ?? [];
+
+        if ($memberType !== null && array_key_exists($memberType, $byType)) {
+            return (float) $byType[$memberType];
+        }
+
+        return (float) ($config['default'] ?? 0);
     }
 }

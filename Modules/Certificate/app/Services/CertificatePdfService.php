@@ -3,6 +3,7 @@
 namespace Modules\Certificate\Services;
 
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Storage;
 use Modules\Certificate\Models\Certificate;
 
 class CertificatePdfService
@@ -26,13 +27,8 @@ class CertificatePdfService
         $pdf = Pdf::loadHTML($html)->setPaper('A4', 'landscape');
 
         $filename = 'certificates/'.$certificate->certificate_no.'.pdf';
-        $path = storage_path('app/public/'.$filename);
 
-        if (! is_dir(dirname($path))) {
-            mkdir(dirname($path), 0755, true);
-        }
-
-        file_put_contents($path, $pdf->output());
+        Storage::disk('local')->put($filename, $pdf->output());
 
         $certificate->update(['pdf_file_path' => $filename]);
 
@@ -45,9 +41,9 @@ class CertificatePdfService
             return null;
         }
 
-        $path = storage_path('app/public/'.$certificate->pdf_file_path);
-
-        return file_exists($path) ? $path : null;
+        return Storage::disk('local')->exists($certificate->pdf_file_path)
+            ? $certificate->pdf_file_path
+            : null;
     }
 
     private function buildHtml(string $certificateNo, string $learnerName, string $learnerNameZh, string $courseName, string $completionDate, string $templateName): string

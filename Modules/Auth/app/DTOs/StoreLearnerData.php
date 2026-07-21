@@ -7,7 +7,7 @@ use Spatie\LaravelData\Data;
 class StoreLearnerData extends Data
 {
     public function __construct(
-        public int $user_id,
+        public ?int $user_id,
         public string $name_en,
         public ?string $name_zh = null,
         public ?string $id_type = null,
@@ -25,7 +25,7 @@ class StoreLearnerData extends Data
     public static function rules(): array
     {
         return [
-            'user_id' => ['required', 'integer'],
+            'user_id' => ['nullable', 'integer'],
             'name_en' => ['required', 'string', 'max:255'],
             'name_zh' => ['nullable', 'string', 'max:255'],
             'id_type' => ['nullable', 'string', 'max:20'],

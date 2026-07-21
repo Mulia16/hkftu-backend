@@ -15,12 +15,14 @@ use Modules\Auth\Models\LearnerProfile;
 use Modules\Auth\Models\User;
 use Modules\Auth\Services\AuditLogger;
 use Modules\Auth\Services\SecurityEventLogger;
+use Modules\Notification\Services\NotificationService;
 
 class AuthController extends Controller
 {
     public function __construct(
         private SecurityEventLogger $securityEvents,
         private AuditLogger $auditLogger,
+        private NotificationService $notifications,
     ) {}
 
     public function register(RegisterRequestData $data)
@@ -158,11 +160,27 @@ class AuthController extends Controller
             ['token' => Hash::make($token), 'created_at' => now()],
         );
 
+        $resetUrl = rtrim(config('app.frontend_url'), '/').'/reset-password?'.http_build_query([
+            'token' => $token,
+            'email' => $user->email,
+        ]);
+
+        $this->notifications->send(
+            channel: 'email',
+            recipient: $user->email,
+            subject: 'Password Reset',
+            body: "We received a request to reset your password. "
+                ."Click the link below to choose a new password. This link expires in 60 minutes.\n\n"
+                .$resetUrl."\n\n"
+                .'If you did not request this, you can safely ignore this email.',
+            relatedType: 'user',
+            relatedId: $user->id,
+        );
+
         $this->securityEvents->record('password_reset_requested', 'info', $user->id);
 
         return response()->json(['data' => [
             'message' => 'If the email exists, a reset link has been sent.',
-            'token' => $token,
         ]]);
     }
 

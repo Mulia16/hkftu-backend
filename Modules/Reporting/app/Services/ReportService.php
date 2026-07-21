@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 use Modules\Reporting\Exports\ReportExport;
+use Modules\Reporting\Jobs\ProcessReportRun;
 use Modules\Reporting\Models\ReportRun;
 use Modules\Reporting\Models\ReportTemplate;
 
@@ -22,10 +23,10 @@ class ReportService
             'template_id' => $templateId,
             'requested_by' => $userId,
             'parameters_json' => $parameters,
-            'status' => 'pending',
+            'status' => 'queued',
         ]);
 
-        $this->executeReport($run);
+        ProcessReportRun::dispatch($run->id);
 
         return $run->fresh();
     }
@@ -70,7 +71,7 @@ class ReportService
                 'instructor_fee_summary' => $this->queryInstructorFeeSummary($params),
                 'quarterly_analysis' => $this->queryQuarterlyAnalysis($params),
                 'annual_tax_export' => $this->queryAnnualTaxExport($params),
-                default => collect(),
+                default => throw new \InvalidArgumentException("Unknown report query_key: {$template->query_key}"),
             };
 
             $isXlsx = $template->format === 'xlsx';
@@ -83,12 +84,12 @@ class ReportService
                 $ext = 'xlsx';
                 $filename = $template->query_key . '_' . $run->id . '_' . now()->format('YmdHis') . '.' . $ext;
                 $path = 'reports/' . $filename;
-                Excel::store(new ReportExport($data), $path, 'public');
+                Excel::store(new ReportExport($data), $path, 'local');
             } else {
                 $ext = 'csv';
                 $filename = $template->query_key . '_' . $run->id . '_' . now()->format('YmdHis') . '.' . $ext;
                 $path = 'reports/' . $filename;
-                Storage::disk('public')->put($path, $this->generateCsv($data));
+                Storage::disk('local')->put($path, $this->generateCsv($data));
             }
 
             $run->update([
