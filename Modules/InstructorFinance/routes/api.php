@@ -12,6 +12,12 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
         ->middleware('role:system_admin,centre_manager,course_planner');
     Route::get('instructors/{id}', [InstructorController::class, 'show'])
         ->middleware('role:system_admin,centre_manager,course_planner');
+    Route::get('instructors/me/teaching-summary', [InstructorController::class, 'teachingSummaryMe'])
+        ->middleware('role:instructor');
+    Route::get('instructors/me/sign-in-sheet', [InstructorController::class, 'signInSheetMe'])
+        ->middleware('role:instructor');
+    Route::post('instructors/me/sessions/{sessionId}/cancel', [InstructorController::class, 'cancelSession'])
+        ->middleware('role:instructor');
     Route::get('instructors/{id}/teaching-summary', [InstructorController::class, 'teachingSummary'])
         ->middleware('role:system_admin,centre_manager,course_planner,instructor');
     Route::get('instructors/{id}/sign-in-sheet', [InstructorController::class, 'signInSheet'])

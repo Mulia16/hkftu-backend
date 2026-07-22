@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Modules\Auth\Models\LearnerProfile;
+use Modules\Auth\Models\MemberPricingConfig;
 use Modules\Auth\Models\MemberPricingEligibility;
 use Modules\Auth\Models\MemberStatusSnapshot;
 use Modules\Auth\Models\MemberVerification;
@@ -134,13 +135,31 @@ class MembershipController extends Controller
 
     private function resolveMemberDiscountPercentage(?string $memberType): float
     {
-        $config = config('membership.member_discount_percentage', []);
-        $byType = $config['by_type'] ?? [];
+        return MemberPricingConfig::current()->percentageFor($memberType);
+    }
 
-        if ($memberType !== null && array_key_exists($memberType, $byType)) {
-            return (float) $byType[$memberType];
-        }
+    public function pricingConfig(): JsonResponse
+    {
+        return response()->json(['data' => MemberPricingConfig::current()]);
+    }
 
-        return (float) ($config['default'] ?? 0);
+    public function updatePricingConfig(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'default_percentage' => ['required', 'numeric', 'min:0', 'max:100'],
+            'by_type' => ['nullable', 'array'],
+            'by_type.*' => ['numeric', 'min:0', 'max:100'],
+        ]);
+
+        $config = MemberPricingConfig::current();
+        $config->update([
+            'default_percentage' => $validated['default_percentage'],
+            'by_type' => $validated['by_type'] ?? [],
+            'updated_by' => $request->user()->id,
+        ]);
+
+        $this->auditLogger->record('membership.pricing_config_update', 'member_pricing_config', $config->id, after: $config->toArray());
+
+        return response()->json(['data' => $config->fresh()]);
     }
 }

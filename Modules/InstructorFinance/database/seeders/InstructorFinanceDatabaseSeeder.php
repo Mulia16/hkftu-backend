@@ -42,17 +42,19 @@ class InstructorFinanceDatabaseSeeder extends Seeder
 
     private function seedContracts(): void
     {
-        $instructor = User::whereHas('roles', fn ($q) => $q->where('name', 'instructor'))->first();
+        $instructors = User::whereHas('roles', fn ($q) => $q->where('name', 'instructor'))
+            ->orderBy('id')
+            ->get();
 
-        if (!$instructor) return;
+        foreach ($instructors as $instructor) {
+            $classes = CourseClass::where('instructor_id', $instructor->id)->get();
 
-        $classes = CourseClass::where('instructor_id', $instructor->id)->get();
-
-        foreach ($classes as $class) {
-            InstructorContract::firstOrCreate(
-                ['class_id' => $class->id, 'instructor_id' => $instructor->id],
-                ['status' => 'signed', 'signed_at' => now()->subDays(30)]
-            );
+            foreach ($classes as $class) {
+                InstructorContract::firstOrCreate(
+                    ['class_id' => $class->id, 'instructor_id' => $instructor->id],
+                    ['status' => 'signed', 'signed_at' => now()->subDays(30)]
+                );
+            }
         }
     }
 }

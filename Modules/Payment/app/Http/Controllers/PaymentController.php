@@ -209,10 +209,38 @@ class PaymentController extends Controller
             return ApiError::respond('INTENT_NOT_FOUND', 'Payment intent not found.', 404);
         }
 
+        if ($intent->status !== 'paid' && $request->filled('skey')) {
+            $rms = app(RazerMsService::class);
+
+            $key = md5(
+                $request->input('tranID').
+                $request->input('orderid').
+                $request->input('status').
+                $request->input('domain').
+                $request->input('amount').
+                $request->input('currency')
+            );
+
+            $isValid = $rms->verifySignature(
+                $request->input('paydate'),
+                $request->input('domain'),
+                $key,
+                $request->input('appcode'),
+                $request->input('skey'),
+            );
+
+            if ($isValid
+                && $request->input('status') == '00'
+                && (float) $request->input('amount') === (float) $intent->amount) {
+                $this->paymentService->confirmGatewayPayment($intent, $request->input('tranID'));
+                $intent->refresh();
+            }
+        }
+
         return response()->json(['data' => [
             'status' => $intent->status,
             'paid' => $intent->status === 'paid',
-            'receipt' => $intent->receipt,
+            'receipt' => $intent->fresh('receipt')->receipt,
         ]]);
     }
 }

@@ -50,9 +50,9 @@ class CourseController extends Controller
             ->where('course_code', $courseCode)
             ->firstOrFail();
 
-        $course->classes->each(function ($class) {
-            $confirmed = $class->sessions->count();
-            $class->setAttribute('available_seats', max(0, $class->capacity - $confirmed));
+        $seatService = app(\Modules\Enrolment\Services\SeatReservationService::class);
+        $course->classes->each(function ($class) use ($seatService) {
+            $class->setAttribute('available_seats', $seatService->calculateAvailableSeats($class));
         });
 
         return response()->json(['data' => $course]);

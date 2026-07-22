@@ -57,6 +57,42 @@ class UserSeeder extends Seeder
             'title' => 'Senior Instructor',
         ],
         [
+            'name' => 'Cheung Wai Man',
+            'email' => 'instructor2@hkftu.org',
+            'phone' => '+852-2000-0007',
+            'role' => 'instructor',
+            'staff_no' => 'INS-002',
+            'department' => 'Teaching',
+            'title' => 'Instructor',
+        ],
+        [
+            'name' => 'Tam Siu Fung',
+            'email' => 'instructor3@hkftu.org',
+            'phone' => '+852-2000-0008',
+            'role' => 'instructor',
+            'staff_no' => 'INS-003',
+            'department' => 'Teaching',
+            'title' => 'Instructor',
+        ],
+        [
+            'name' => 'Leung Ka Ming',
+            'email' => 'instructor4@hkftu.org',
+            'phone' => '+852-2000-0009',
+            'role' => 'instructor',
+            'staff_no' => 'INS-004',
+            'department' => 'Teaching',
+            'title' => 'Instructor',
+        ],
+        [
+            'name' => 'Yip Shuk Han',
+            'email' => 'instructor5@hkftu.org',
+            'phone' => '+852-2000-0010',
+            'role' => 'instructor',
+            'staff_no' => 'INS-005',
+            'department' => 'Teaching',
+            'title' => 'Instructor',
+        ],
+        [
             'name' => 'Ng Mei Ling',
             'email' => 'finance@hkftu.org',
             'phone' => '+852-2000-0006',
@@ -71,6 +107,7 @@ class UserSeeder extends Seeder
     {
         $defaultPassword = Hash::make('password');
         $systemCentreId = 0;
+        $instructorIndex = 0;
 
         foreach (self::USERS as $data) {
             $user = User::firstOrCreate(
@@ -98,10 +135,11 @@ class UserSeeder extends Seeder
             );
 
             if ($data['role'] === 'instructor') {
+                $instructorIndex++;
                 InstructorProfile::firstOrCreate(
                     ['user_id' => $user->id],
                     [
-                        'instructor_no' => 'INST-001',
+                        'instructor_no' => sprintf('INST-%03d', $instructorIndex),
                         'name' => $data['name'],
                         'phone' => $data['phone'],
                         'email' => $data['email'],

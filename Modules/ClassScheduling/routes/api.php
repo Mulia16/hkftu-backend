@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Modules\ClassScheduling\Http\Controllers\CalendarController;
 use Modules\ClassScheduling\Http\Controllers\CentreController;
 use Modules\ClassScheduling\Http\Controllers\ClassController;
 use Modules\ClassScheduling\Http\Controllers\ClassroomController;
@@ -12,6 +13,8 @@ Route::prefix('v1')->group(function () {
     });
 
     Route::middleware(['auth:sanctum'])->group(function () {
+        Route::get('calendar/sessions', [CalendarController::class, 'sessions']);
+
         Route::post('centres', [CentreController::class, 'store'])
             ->middleware('role:system_admin');
         Route::patch('centres/{centre}', [CentreController::class, 'update'])

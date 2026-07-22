@@ -17,9 +17,11 @@ class ClassSeeder extends Seeder
     {
         $courses = Course::with('subject')->where('status', 'published')->get();
         $centres = Centre::where('status', 'active')->get();
-        $instructor = User::whereHas('roles', fn ($q) => $q->where('name', 'instructor'))->first();
+        $instructors = User::whereHas('roles', fn ($q) => $q->where('name', 'instructor'))
+            ->orderBy('id')
+            ->get();
 
-        if ($courses->isEmpty() || $centres->isEmpty()) {
+        if ($courses->isEmpty() || $centres->isEmpty() || $instructors->isEmpty()) {
             return;
         }
 
@@ -50,6 +52,7 @@ class ClassSeeder extends Seeder
             $centre = $centres[$i % $centres->count()];
             $classroom = Classroom::where('centre_id', $centre->id)->first();
             $pattern = $patterns[$i % count($patterns)];
+            $instructor = $instructors[$i % $instructors->count()];
 
             $class = CourseClass::firstOrCreate(
                 ['class_code' => sprintf('CLS-%s-%02d', $course->course_code, 1)],
@@ -62,7 +65,7 @@ class ClassSeeder extends Seeder
                     'min_students' => 5,
                     'start_date' => '2026-07-01',
                     'end_date' => '2026-09-30',
-                    'instructor_id' => $instructor?->id,
+                    'instructor_id' => $instructor->id,
                     'status' => 'published',
                 ],
             );
